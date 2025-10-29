@@ -1,7 +1,7 @@
 # Deploy.md file
 ## Deploy Locally
-1. Create a Virtual Environment using `python3 -m venv venv`
-2. Active the Virtual Enviroment using `source venv/bin/activate` on Mac or `venv\Scripts\activate` on Windows
+1. Create a Virtual Environment using `python3 -m venv .venv`
+2. Active the Virtual Enviroment using `source .venv/bin/activate` on Mac or `.venv\Scripts\activate` on Windows
 3. Install Dependencies using `pip install -r requirements.txt`
 4. Run the Application using `python app.py`
 ## Deploy On AWS
