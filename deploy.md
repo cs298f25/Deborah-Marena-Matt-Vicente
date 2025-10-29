@@ -1,7 +1,6 @@
 # Deploy.md file
 
-
-### 2. Create a Virtual Environment
+Create a Virtual Environment
 ```bash
 python3 -m venv venv
 
