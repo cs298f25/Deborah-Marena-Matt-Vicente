@@ -9,7 +9,7 @@
 2. SSH into your created instance
 3. Type `sudo yum install -y git` in the console
 4. Clone the repo into your EC2 instance using `git clone https://github.com/cs298f25/Deborah-Marena-Matt-Vicente.git`
-5. 1. Create a Virtual Environment using `python3 -m venv .venv`
+5. Create a Virtual Environment using `python3 -m venv .venv`
 6. Active the Virtual Enviroment using `source .venv/bin/activate`
 7. Install Dependencies using `pip install -r requirements.txt`
 
