@@ -3,12 +3,12 @@
 
 ---
 
-## 🎯 Project Goal
+## Project Goal
 Transform BytePath from client-side only → Full-stack application with instructor management & student analytics
 
 ---
 
-## 📊 System Architecture
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -41,26 +41,26 @@ Transform BytePath from client-side only → Full-stack application with instruc
 
 ---
 
-## 👥 User Roles & Features
+## User Roles & Features
 
-### 👨‍🏫 INSTRUCTOR (Dr. Bush)
+### INSTRUCTOR (Dr. Bush)
 
 **Content Management**
 ```
 ┌─────────────────────────────────────┐
-│ ✏️  ADD new questions               │
-│ 📝 EDIT existing questions          │
-│ 👁️  HIDE/SHOW questions visibility  │
+│  ADD new questions               │
+│  EDIT existing questions          │
+│  HIDE/SHOW questions visibility  │
 └─────────────────────────────────────┘
 ```
 
 **Reporting & Analytics**
 ```
 ┌──────────────────────────────────────────┐
-│ 📈 Topic Reports                         │
+│ Topic Reports                            │
 │    → Weekly assignment performance       │
 │                                          │
-│ 👤 Student Reports                       │
+│    Student Reports                       │
 │    → Individual performance metrics      │
 │    → Performance trends (line graphs)    │
 │    → Time per question                   │
@@ -68,7 +68,7 @@ Transform BytePath from client-side only → Full-stack application with instruc
 └──────────────────────────────────────────┘
 ```
 
-### 🎓 STUDENT
+###  STUDENT
 
 ```
 ┌─────────────────────────────────────┐
@@ -80,7 +80,7 @@ Transform BytePath from client-side only → Full-stack application with instruc
 
 ---
 
-## 💾 Data Capture
+##  Data Capture
 
 ```
 For Each Question Attempt:
@@ -94,19 +94,19 @@ For Each Question Attempt:
 
 ---
 
-## 🔧 Technical Stack
+##  Technical Stack
 
 | Component      | Technology           |
 |----------------|---------------------|
 | Frontend       | HTML/CSS/JavaScript |
 | Backend        | Flask               |
 | Authentication | Moravian OAuth SDK  |
-| Database       | MySQL/PostgreSQL    |
+| Database       | MySQL/Postgre/mongo |
 | Hosting        | TBD                 |
 
 ---
 
-## 📋 Implementation Roadmap
+##  Implementation Roadmap
 
 ```
 Phase 1: Foundation
@@ -137,7 +137,7 @@ Phase 5: Integration & Testing
 
 ---
 
-## 📊 Sample Reports
+##  Sample Reports
 
 ### Topic Performance Report
 ```
