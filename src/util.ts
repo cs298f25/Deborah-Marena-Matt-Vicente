@@ -1,0 +1,153 @@
+///////////////////////////////////////
+////////// Utility Functions //////////
+///////////////////////////////////////
+// Shuffle array
+export function shuffle<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Generate a range of integers (inclusive of min and max)
+export function range(min: bigint, max: bigint, step: bigint = 1n): bigint[] {
+  return Array.from({ length: Number((max - min) / step) + 1 }, (_, i) => min + BigInt(i) * step);
+}
+
+// Generate a range of numbers (inclusive of min and max)
+export function rangeNum(min: number, max: number, step: number = 1): number[] {
+  return Array.from({ length: Math.floor((max - min) / step + 1) }, (_, i) => min + i * step);
+}
+
+// Generate random integers (inclusive of min and max)
+export function randInt(min: bigint, max: bigint): bigint {
+  return BigInt(Math.floor(Math.random() * (Number(max - min) + 1))) + min;
+}
+
+// Generate random integers [as numbers] (inclusive of min and max)
+export function randIntNum(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// Generate n random integers between min and max (inclusive); all elements will be unique
+export function randInts(min: bigint, max: bigint, n: number, unique: boolean = true): bigint[] {
+  if (unique) {
+    const nums = Array.from({ length: Number(max - min) + 1 }, (_, i) => min + BigInt(i));
+    return randChoices(nums, n);
+  } else {
+    return Array.from({ length: n }, () => randInt(min, max));
+  }
+}
+
+// Generate n random integers [as numbers] between min and max (inclusive); all elements will be unique
+export function randIntsNum(min: number, max: number, n: number, unique: boolean = true): number[] {
+  if (unique) {
+    const nums = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+    return randChoices(nums, n);
+  } else {
+    return Array.from({ length: n }, () => randIntNum(min, max));
+  }
+}
+
+// Generate a random float between min and max (inclusive) with a max number of decimal places
+export function randFloat(min: number = 0, max: number = 1, decimals: number = 1): number {
+  return parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
+}
+
+// Generate n random floats between min and max (inclusive); all elements will be unique
+export function randFloats(min: number = 0, max: number = 1, n: number = 1, unique: boolean = true, decimals: number = 1): number[] {
+  if (unique) {
+    const nums = new Set<number>();
+    while (nums.size < n) { nums.add(randFloat(min, max, decimals)); }
+    return Array.from(nums);
+  } else {
+    return Array.from({ length: n }, () => randFloat(min, max, decimals));
+  }
+}
+
+// Check if two numbers are close to each other
+// Treats NaN as equal to NaN
+export function isClose(a: number, b: number, epsilon: number = 1e-6): boolean {
+  if (isNaN(a) || isNaN(b)) { return isNaN(a) && isNaN(b); }
+  if (a === Infinity || b === Infinity) { return a === Infinity && b === Infinity; }
+  if (a === -Infinity || b === -Infinity) { return a === -Infinity && b === -Infinity; }
+  return Math.abs(a - b) <= epsilon * Math.max(Math.abs(a), Math.abs(b));
+}
+
+// Generate a random boolean
+export function randBool(): boolean { return Math.random() > 0.5; }
+
+// Generate n random booleans
+export function randBools(n: number): boolean[] { return Array.from({length: n}, randBool); }
+
+// Choose a random element from an array
+export function randChoice<T>(array: T[]): T {
+  return array[randIntNum(0, array.length - 1)];
+}
+
+// Choose n random elements from an array; all elements will be unique
+export function randChoices<T>(array: T[], n: number, unique: boolean = true): T[] {
+  if (unique) {
+    return shuffle(array).slice(0, n);
+  } else {
+    return Array.from({ length: n }, () => randChoice(array));
+  }
+}
+
+export const ASCII_LETTERS = [..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+export const DIGITS = [..."0123456789"];
+export const STRINGS = ['hello', 'world', 'python', 'code', 'cat', 'dog', 'cow', 'pig', 'apple', 'banana', 'kiwi', 'mango', 'pear'];
+export const VARS = ['x', 'y', 'z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'm', 'n'];
+export const FUNCS = ['foo', 'bar', 'baz', 'qux', 'quux', 'corge', 'grault', 'garply', 'waldo', 'fred', 'plugh', 'xyzzy', 'thud'];
+
+// Choose a random variable name
+export function randVariable(): string { return randChoice(VARS); }
+
+// Choose n random variable names
+export function randVars(n: number): string[] { return randChoices(VARS, n); }
+
+// Choose a random function name
+export function randFunc(): string { return randChoice(FUNCS); }
+
+// Choose n random function names
+export function randFuncs(n: number): string[] { return randChoices(FUNCS, n); }
+
+
+// Max of two bigints
+export function max(a: bigint, b: bigint): bigint { return a > b ? a : b }
+
+// Min of two bigints
+export function min(a: bigint, b: bigint): bigint { return a < b ? a : b }
+
+// Perform a mathematical operation on two bigints
+export function math(a: bigint, op: string, b: bigint): bigint {
+  if (op === '+') { return a + b; }
+  if (op === '-') { return a - b; }
+  if (op === '*') { return a * b; }
+  //if (op === '/') { return a.toNumber() / b.toNumber(); } // generates a number, not a bigint
+  if (op === '//') { return a / b; }
+  if (op === '%') { return a % b; }
+  if (op === '**') { return a ** b; }
+  throw new Error(`Invalid operation: ${op}`);
+}
+
+// Evaluate a relational operation on two bigints
+export function evalRelOp(a: bigint, op: string, b: bigint): boolean {
+  switch (op) {
+    case '==': return a == b;
+    case '!=': return a != b;
+    case '<': return a < b;
+    case '<=': return a <= b;
+    case '>': return a > b;
+    case '>=': return a >= b;
+  }
+  return false;
+}
+
+// Return "not " with a given probability
+export function maybeNot(probability: number = 0.2): string { return Math.random() <= probability ? "not " : ""; }
+
+// Capitalize the first character of a string
+export function capitalize(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
