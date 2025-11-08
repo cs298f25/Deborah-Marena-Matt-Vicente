@@ -1,0 +1,178 @@
+import { useEffect, useMemo, useState } from "react";
+
+type Student = {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type Paginated<T> = {
+  items: T[];
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+};
+
+const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:5001/api";
+
+async function fetchStudents(page = 1, pageSize = 20, search = ""): Promise<Paginated<Student>> {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  if (search.trim()) params.set("search", search.trim());
+  const res = await fetch(`${API_BASE}/students?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch students (${res.status})`);
+  return res.json();
+}
+
+async function uploadStudentsCsv(file: File) {
+  const fd = new FormData();
+  fd.set("file", file);
+  const res = await fetch(`${API_BASE}/students/upload`, { method: "POST", body: fd });
+  if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+  return res.json() as Promise<{ summary: any; errors: Array<{ line: number; reason: string }> }>;
+}
+
+export default function StudentsPage() {
+  const [students, setStudents] = useState<Student[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [errors, setErrors] = useState<{ line: number; reason: string }[]>([]);
+  const [summary, setSummary] = useState<any>(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchStudents(page, pageSize, search);
+      setStudents(data.items);
+      setTotalPages(data.total_pages);
+      setTotal(data.total);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [page, pageSize]);
+
+  const doSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    await load();
+  };
+
+  const handleFile = async (file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    setSummary(null);
+    setErrors([]);
+    try {
+      const res = await uploadStudentsCsv(file);
+      setSummary(res.summary);
+      setErrors(res.errors);
+      await load();
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const pageSizes = useMemo(() => [10, 20, 50, 100], []);
+
+  return (
+    <div style={{ padding: "1rem 1.5rem", maxWidth: 1000, margin: "0 auto", color: "white" }}>
+      <h2 style={{ margin: 0, marginBottom: ".5rem" }}>Students</h2>
+      <p style={{ opacity: .9, marginTop: 0 }}>Upload a CSV and browse the roster with pagination.</p>
+
+      <div style={{
+        display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap",
+        background: "rgba(255,255,255,0.08)", padding: "0.75rem 1rem", borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)"
+      }}>
+        <form onSubmit={doSearch} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search name or email…"
+            style={{ padding: "0.5rem 0.75rem", borderRadius: 8, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.25)", color: "white" }}
+          />
+          <button type="submit" className="toggle-button">Search</button>
+        </form>
+
+        <div style={{ flex: 1 }} />
+
+        <label style={{ display: "inline-block" }}>
+          <span style={{ marginRight: 8, opacity: .9 }}>Upload CSV</span>
+          <input type="file" accept=".csv,text/csv" onChange={e => handleFile(e.target.files?.[0] || null)} disabled={uploading} />
+        </label>
+
+        <a href={`${API_BASE}/students/template`} style={{ color: "white", textDecoration: "underline" }}>
+          Download template
+        </a>
+      </div>
+
+      {summary && (
+        <div style={{ marginTop: 12, fontSize: 14, background: "rgba(255,255,255,0.08)", padding: "0.75rem 1rem", borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)" }}>
+          <strong>Upload summary:</strong>{" "}
+          inserted {summary.inserted}, updated {summary.updated}, skipped {summary.skipped} (processed {summary.total_processed})
+        </div>
+      )}
+      {errors.length > 0 && (
+        <div style={{ marginTop: 8, fontSize: 14, background: "rgba(255,0,0,0.15)", padding: "0.75rem 1rem", borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)" }}>
+          <strong>Errors:</strong>
+          <ul style={{ margin: "6px 0 0 1rem" }}>
+            {errors.map((er, i) => <li key={i}>Line {er.line}: {er.reason}</li>)}
+          </ul>
+        </div>
+      )}
+
+      <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ opacity: .9 }}>Rows per page</span>
+        <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ padding: "0.3rem 0.6rem", borderRadius: 8 }}>
+          {pageSizes.map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+        <div style={{ flex: 1 }} />
+        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={loading || page <= 1}>Prev</button>
+        <span>Page {totalPages ? page : 1} / {totalPages || 1}</span>
+        <button onClick={() => setPage(p => (totalPages ? Math.min(totalPages, p + 1) : p + 1))} disabled={loading || (totalPages > 0 && page >= totalPages)}>Next</button>
+        <span style={{ opacity: .8 }}>Total: {total}</span>
+      </div>
+
+      <div style={{ marginTop: 12, overflowX: "auto", borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead style={{ background: "rgba(255,255,255,0.1)" }}>
+            <tr>
+              <th style={{ textAlign: "left", padding: "0.6rem" }}>Email</th>
+              <th style={{ textAlign: "left", padding: "0.6rem" }}>First name</th>
+              <th style={{ textAlign: "left", padding: "0.6rem" }}>Last name</th>
+              <th style={{ textAlign: "left", padding: "0.6rem" }}>Added</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={4} style={{ padding: "0.8rem" }}>Loading…</td></tr>
+            ) : students.length === 0 ? (
+              <tr><td colSpan={4} style={{ padding: "0.8rem" }}>No students</td></tr>
+            ) : (
+              students.map(s => (
+                <tr key={s.id} style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+                  <td style={{ padding: "0.6rem" }}>{s.email}</td>
+                  <td style={{ padding: "0.6rem" }}>{s.first_name}</td>
+                  <td style={{ padding: "0.6rem" }}>{s.last_name}</td>
+                  <td style={{ padding: "0.6rem" }}>{new Date(s.created_at).toLocaleString()}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+

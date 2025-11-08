@@ -8,6 +8,7 @@ import QuestionScreen from './components/QuestionScreen.tsx';
 import TopicCompletionScreen from './components/TopicCompletionScreen.tsx';
 import LockedTopicScreen from './components/LockedTopicScreen.tsx';
 import { getPythonLoadPromise } from './python.ts';
+import StudentsPage from './pages/StudentsPage.tsx';
 import './App.css';
 
 export const SKIPPED = Symbol('(skipped)');
@@ -29,7 +30,7 @@ const getAllTopics = (): Topic[] => {
 
 
 function App() {
-  const [currentScreen, setCurrentScreen] = useState<'welcome' | 'question' | 'locked-topic'>('welcome');
+  const [currentScreen, setCurrentScreen] = useState<'welcome' | 'question' | 'locked-topic' | 'students'>('welcome');
   let [isLoading, setIsLoading] = useState(true);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   let [topicToSelectAfterLoading, setTopicToSelectAfterLoading] = useState<Topic | null>(null);
@@ -309,6 +310,10 @@ function App() {
             className={`toggle-button ${mode === 'quiz' ? 'active' : ''}`}
             onClick={() => setMode('quiz')}
           >✏️ Quiz</button>
+          <button 
+            className={`toggle-button ${currentScreen === 'students' ? 'active' : ''}`}
+            onClick={() => setCurrentScreen('students')}
+          >👥 Students</button>
         </div>
       </header>
 
@@ -465,6 +470,10 @@ function App() {
               completedTopics={completedTopics}
               onTopicSelect={selectTopic}
             />
+          )}
+
+          {currentScreen === 'students' && (
+            <StudentsPage />
           )}
 
           {currentScreen === 'question' && (
