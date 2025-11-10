@@ -297,7 +297,7 @@ function App() {
         <table onClick={() => { setCurrentScreen('welcome'); window.location.hash = ''; }} style={{ cursor: 'pointer' }}><tbody>
           <tr>
             <td rowSpan={2}><img src="https://s3.dualstack.us-east-2.amazonaws.com/pythondotorg-assets/media/files/python-logo-only.svg" alt="Python Logo"/></td>
-            <td><h1>SnakeBytes</h1></td>
+            <td><h1>Bytepath</h1></td>
           </tr>
           <tr><td className="subtitle">Learning with Small Python Snippets</td></tr>
         </tbody></table>
@@ -443,7 +443,7 @@ function App() {
         <div className="content-area" ref={contentAreaRef}>
           {currentScreen === 'welcome' && (
             <div className="welcome-screen">
-              <h2>Welcome to SnakeBytes</h2>
+              <h2>Welcome to Bytepath</h2>
               {
                 completedTopics.size === allTopics.length ? (
                   <div>
