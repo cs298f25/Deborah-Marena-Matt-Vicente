@@ -15,6 +15,29 @@ db = SQLAlchemy(app)
 CORS(app)  # Enable CORS for API access
 
 
+def normalize_student_fields(row):
+    normalized = {}
+    for key, value in row.items():
+        if key is None:
+            continue
+        normalized_key = key.strip().lstrip('\ufeff').lower().replace(' ', '_')
+        normalized[normalized_key] = (value or '').strip()
+
+    first_name = normalized.get('first_name', '')
+    last_name = normalized.get('last_name', '')
+    email = normalized.get('email', '')
+
+    if (not first_name or not last_name) and normalized.get('name'):
+        parts = normalized['name'].split()
+        if parts:
+            if not first_name:
+                first_name = parts[0]
+            if not last_name and len(parts) > 1:
+                last_name = ' '.join(parts[1:])
+
+    return first_name, last_name, email
+
+
 # Student Model
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -75,9 +98,7 @@ def upload_csv():
         skipped_count = 0
 
         for row in csv_reader:
-            first_name = row.get('first_name', '').strip()
-            last_name = row.get('last_name', '').strip()
-            email = row.get('email', '').strip()
+            first_name, last_name, email = normalize_student_fields(row)
 
             if not first_name or not last_name or not email:
                 skipped_count += 1
@@ -181,9 +202,7 @@ def api_upload_students():
         
         for row in csv_reader:
             line_num += 1
-            first_name = row.get('first_name', '').strip()
-            last_name = row.get('last_name', '').strip()
-            email = row.get('email', '').strip()
+            first_name, last_name, email = normalize_student_fields(row)
             
             # Validate required fields
             if not first_name:
