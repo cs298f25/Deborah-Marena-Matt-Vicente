@@ -1,15 +1,18 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from sqlalchemy import func
 import csv
 import os
 from io import StringIO, BytesIO
 from datetime import datetime
+from urllib.parse import urlencode
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///students.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your-secret-key-here'  # Change this in production
+app.config['SNAKEBYTES_URL'] = os.environ.get('SNAKEBYTES_URL', 'http://localhost:5173')
 
 db = SQLAlchemy(app)
 CORS(app)  # Enable CORS for API access
@@ -69,25 +72,62 @@ with app.app_context():
 
 @app.route('/')
 def index():
-    students = Student.query.all()
-    return render_template('index.html', students=students)
+    """Landing page where users choose their role."""
+    return render_template('index.html')
+
+
+@app.route('/professor')
+def professor_portal():
+    """Professor dashboard for managing student rosters."""
+    students = Student.query.order_by(Student.created_at.desc()).all()
+    return render_template('professor.html', students=students)
+
+
+@app.route('/student', methods=['GET', 'POST'])
+def student_access():
+    """Simple email check so students can get to SnakeBytes resources."""
+    email = ''
+    error = None
+
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        if not email:
+            error = 'Please enter your Moravian email.'
+        else:
+            student = Student.query.filter(
+                func.lower(Student.email) == email
+            ).first()
+            if not student:
+                error = 'Email not found. Double-check the spelling or ask your professor to add you.'
+            else:
+                target_url = app.config.get('SNAKEBYTES_URL') or '/'
+                separator = '&' if '?' in target_url else '?'
+                redirect_url = f"{target_url}{separator}{urlencode({'email': email})}" if email else target_url
+                return redirect(redirect_url)
+
+    return render_template(
+        'student_access.html',
+        email=email,
+        error=error,
+        snakebytes_url=app.config['SNAKEBYTES_URL']
+    )
 
 
 @app.route('/upload', methods=['POST'])
 def upload_csv():
     if 'file' not in request.files:
         flash('No file selected', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('professor_portal'))
 
     file = request.files['file']
 
     if file.filename == '':
         flash('No file selected', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('professor_portal'))
 
     if not file.filename.endswith('.csv'):
         flash('Please upload a CSV file', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('professor_portal'))
 
     try:
         # Read CSV file
@@ -123,7 +163,7 @@ def upload_csv():
         db.session.rollback()
         flash(f'Error processing file: {str(e)}', 'error')
 
-    return redirect(url_for('index'))
+    return redirect(url_for('professor_portal'))
 
 
 @app.route('/clear', methods=['POST'])
@@ -136,7 +176,7 @@ def clear_students():
         db.session.rollback()
         flash(f'Error clearing database: {str(e)}', 'error')
 
-    return redirect(url_for('index'))
+    return redirect(url_for('professor_portal'))
 
 
 # ============ REST API ENDPOINTS ============
