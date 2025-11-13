@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
-from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from sqlalchemy import func
 import csv
@@ -8,13 +7,16 @@ from io import StringIO, BytesIO
 from datetime import datetime
 from urllib.parse import urlencode
 
+from database import db, init_db
+from models import Student
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///students.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your-secret-key-here'  # Change this in production
 app.config['SNAKEBYTES_URL'] = os.environ.get('SNAKEBYTES_URL', 'http://localhost:5173')
 
-db = SQLAlchemy(app)
+init_db(app)
 CORS(app)  # Enable CORS for API access
 
 
@@ -40,34 +42,6 @@ def normalize_student_fields(row):
 
     return first_name, last_name, email
 
-
-# Student Model
-class Student(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    first_name = db.Column(db.String(100), nullable=False)
-    last_name = db.Column(db.String(100), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    def __repr__(self):
-        return f'<Student {self.first_name} {self.last_name}>'
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'email': self.email,
-            'first_name': self.first_name,
-            'last_name': self.last_name,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
-        }
-
-# Create database tables with the new schema
-with app.app_context():
-    # This will create the database with the current model definitions
-    db.create_all()
-    print("✅ Database tables created with current schema")
 
 
 @app.route('/')
