@@ -1,164 +1,355 @@
 openapi: 3.0.0
 info:
-  title: Student Management API
-  description: "API for managing student resources including listing, uploading, and template download."
+  title: Bytepath Student Management API
+  description: |
+    REST API for managing student resources in the Bytepath learning platform.
+    
+    This API allows professors to:
+    - Retrieve paginated lists of students with search functionality
+    - Upload CSV files to bulk insert or update students
+    - Download CSV templates for student data uploads
+    
+    All endpoints return JSON responses except for the template download endpoint which returns a CSV file.
   version: 1.0.0
+  contact:
+    name: Bytepath API Support
+  license:
+    name: MIT
+
 servers:
-- url: /
+  - url: http://localhost:5001
+    description: Local development server
+  - url: https://api.bytepath.example.com
+    description: Production server (replace with your actual domain)
+
+tags:
+  - name: Students
+    description: Student management operations
+
 paths:
   /api/students:
     get:
-      summary: Retrieve paginated list of students
+      tags:
+        - Students
+      summary: Get paginated list of students
+      description: |
+        Retrieves a paginated list of students. Supports optional search filtering
+        on first name, last name, or email (case-insensitive).
+        
+        Used by the frontend React application in `StudentsPage.tsx`.
       operationId: getStudents
       parameters:
-      - name: page
-        in: query
-        description: Page number for pagination (default 1)
-        required: false
-        schema:
-          type: integer
-          default: 1
-      - name: page_size
-        in: query
-        description: Number of students per page (default 20)
-        required: false
-        schema:
-          type: integer
-          default: 20
-      - name: search
-        in: query
-        description: "Case-insensitive search on first name, last name, or email"
-        required: false
-        schema:
-          type: string
+        - name: page
+          in: query
+          description: Page number for pagination (1-indexed)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: page_size
+          in: query
+          description: Number of students per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+        - name: search
+          in: query
+          description: Case-insensitive search term to filter by first name, last name, or email
+          required: false
+          schema:
+            type: string
+          example: "john"
       responses:
-        "200":
-          description: Paginated list of students
+        '200':
+          description: Successful response with paginated student list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/inline_response_200"
+                $ref: '#/components/schemas/StudentListResponse'
+              examples:
+                default:
+                  value:
+                    items:
+                      - id: 1
+                        email: "john.doe@moravian.edu"
+                        first_name: "John"
+                        last_name: "Doe"
+                        created_at: "2024-01-15T10:30:00"
+                        updated_at: "2024-01-15T10:30:00"
+                      - id: 2
+                        email: "jane.smith@moravian.edu"
+                        first_name: "Jane"
+                        last_name: "Smith"
+                        created_at: "2024-01-15T11:00:00"
+                        updated_at: "2024-01-15T11:00:00"
+                    page: 1
+                    page_size: 20
+                    total: 2
+                    total_pages: 1
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/students/upload:
     post:
-      summary: Upload a CSV file to insert or update students
+      tags:
+        - Students
+      summary: Upload CSV file to insert or update students
+      description: |
+        Uploads a CSV file containing student data. The API will:
+        - Insert new students that don't exist (based on email)
+        - Update existing students if they already exist (based on email)
+        - Skip rows with missing required fields (first_name, last_name, email)
+        - Return a summary of operations and any validation errors
+        
+        CSV format should have columns: first_name, last_name, email (case-insensitive headers).
+        The API normalizes field names by converting to lowercase and replacing spaces with underscores.
+        
+        Used by the frontend React application in `StudentsPage.tsx`.
       operationId: uploadStudentsCsv
       requestBody:
+        required: true
         content:
           multipart/form-data:
             schema:
-              $ref: "#/components/schemas/students_upload_body"
-        required: true
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "CSV file with student data (columns: first_name, last_name, email)"
+            encoding:
+              file:
+                contentType: text/csv
       responses:
-        "200":
-          description: Summary of CSV upload results
+        '200':
+          description: Successful upload with processing summary
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/inline_response_200_1"
-        "400":
-          description: Bad input error
+                $ref: '#/components/schemas/UploadResponse'
+              examples:
+                success:
+                  value:
+                    summary:
+                      inserted: 5
+                      updated: 2
+                      skipped: 0
+                      total_processed: 7
+                    errors: []
+                with_errors:
+                  value:
+                    summary:
+                      inserted: 3
+                      updated: 1
+                      skipped: 0
+                      total_processed: 5
+                    errors:
+                      - line: 3
+                        reason: "Missing email"
+                      - line: 6
+                        reason: "Missing first_name"
+        '400':
+          description: Bad request - missing file, invalid file type, or empty file
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/inline_response_400"
-        "500":
-          description: Unexpected server error
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                no_file:
+                  value:
+                    error: "No file provided"
+                no_file_selected:
+                  value:
+                    error: "No file selected"
+                invalid_type:
+                  value:
+                    error: "File must be a CSV"
+        '500':
+          description: Internal server error during file processing
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/inline_response_400"
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Database connection failed"
+
   /api/students/template:
     get:
-      summary: Download CSV template for student upload
+      tags:
+        - Students
+      summary: Download CSV template for student uploads
+      description: |
+        Downloads a CSV template file that can be used as a reference for
+        the expected format when uploading student data. The template includes
+        example rows showing the required columns: first_name, last_name, email.
+        
+        Used by the frontend React application in `StudentsPage.tsx` as a download link.
       operationId: downloadStudentTemplate
       responses:
-        "200":
+        '200':
           description: CSV template file
           headers:
             Content-Disposition:
-              description: Attachment header to prompt file download
+              description: Attachment header with filename
               schema:
                 type: string
+                example: "attachment; filename=students_template.csv"
           content:
             text/csv:
               schema:
                 type: string
                 format: binary
+              example: |
+                first_name,last_name,email
+                John,Doe,john.doe@example.com
+                Jane,Smith,jane.smith@example.com
+
 components:
   schemas:
     Student:
       type: object
+      description: A student resource
       properties:
         id:
           type: integer
+          description: Unique identifier for the student
+          example: 1
         email:
           type: string
           format: email
+          description: Student's email address (must be unique)
+          example: "john.doe@moravian.edu"
         first_name:
           type: string
+          description: Student's first name
+          example: "John"
         last_name:
           type: string
+          description: Student's last name
+          example: "Doe"
         created_at:
           type: string
           format: date-time
+          description: Timestamp when the student record was created
+          example: "2024-01-15T10:30:00"
         updated_at:
           type: string
           format: date-time
-      description: A student resource
-    inline_response_200:
+          nullable: true
+          description: Timestamp when the student record was last updated
+          example: "2024-01-15T10:30:00"
+      required:
+        - id
+        - email
+        - first_name
+        - last_name
+        - created_at
+
+    StudentListResponse:
       type: object
+      description: Paginated response containing a list of students
       properties:
         items:
           type: array
+          description: Array of student objects
           items:
-            $ref: "#/components/schemas/Student"
+            $ref: '#/components/schemas/Student'
         page:
           type: integer
+          description: Current page number (1-indexed)
+          example: 1
         page_size:
           type: integer
+          description: Number of items per page
+          example: 20
         total:
           type: integer
+          description: Total number of students matching the query
+          example: 45
         total_pages:
           type: integer
-    students_upload_body:
+          description: Total number of pages available
+          example: 3
       required:
-      - file
+        - items
+        - page
+        - page_size
+        - total
+        - total_pages
+
+    UploadResponse:
       type: object
+      description: Response from CSV upload operation
       properties:
-        file:
-          type: string
-          description: CSV file containing student data
-          format: binary
-    inline_response_200_1:
-      type: object
-      properties:
-        inserted:
-          type: integer
-          description: Number of rows inserted
-        updated:
-          type: integer
-          description: Number of rows updated
-        skipped:
-          type: integer
-          description: Number of rows skipped
-        total:
-          type: integer
-          description: Total rows processed
+        summary:
+          type: object
+          description: Summary of upload processing results
+          properties:
+            inserted:
+              type: integer
+              description: Number of new students inserted
+              example: 5
+            updated:
+              type: integer
+              description: Number of existing students updated
+              example: 2
+            skipped:
+              type: integer
+              description: Number of rows skipped (duplicates or invalid)
+              example: 0
+            total_processed:
+              type: integer
+              description: Total number of data rows processed (excluding header)
+              example: 7
+          required:
+            - inserted
+            - updated
+            - skipped
+            - total_processed
         errors:
           type: array
+          description: Array of validation errors encountered during processing
           items:
-            $ref: "#/components/schemas/inline_response_200_1_errors"
-    inline_response_400:
+            $ref: '#/components/schemas/ValidationError'
+      required:
+        - summary
+        - errors
+
+    ValidationError:
       type: object
-      properties:
-        error:
-          type: string
-    inline_response_200_1_errors:
-      type: object
+      description: Validation error for a specific CSV row
       properties:
         line:
           type: integer
-          description: Line number with error
-        message:
+          description: Line number in the CSV file where the error occurred (1-indexed, excluding header)
+          example: 3
+        reason:
           type: string
           description: Description of the validation error
+          example: "Missing email"
+      required:
+        - line
+        - reason
+
+    ErrorResponse:
+      type: object
+      description: Standard error response
+      properties:
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: "No file provided"
+      required:
+        - error
