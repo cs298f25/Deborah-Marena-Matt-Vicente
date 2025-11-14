@@ -1,52 +1,121 @@
 # Progress Meeting Runbook
 
-This document walks through every item we must cover during the standing progress meetings. Use it as the shared script/checklist so each teammate can confidently present their portion.
+Shared script/checklist so we stay aligned during demos and status updates.
 
 ---
+
+## 1. Project Snapshot
+- **Bytepath front-end**: React + TypeScript (Vite) experience that recreates the Bytepath learning flow with topic navigation, quiz/learning modes, a Python runtime (Pyodide/MicroPython), and a Students roster page wired to the API.
+- **Flask back-end**: Single `app.py` service that renders the student/professor portals, enforces roster-based access to Bytepath, exposes REST endpoints, and persists students through SQLAlchemy + SQLite (`students.db`).
+- **Professor workflow**: `/professor` provides CSV upload + roster table for manual verification; `/clear` wipes the roster when needed.
+- **Student access workflow**: `/student` email gate looks up students and redirects them to `BYTEPATH_URL` (defaults to the Vite dev server) with the verified email as a query param.
 
 ## 2. Launch Readiness (everyone can run it)
 1. `python3 -m venv .venv && source .venv/bin/activate`
 2. `pip install -r bytepath-backend/requirements.txt`
-3. `python bytepath-backend/app.py` (Flask + SQLite provisional DB)
+3. `python bytepath-backend/app.py`
+   - Runs Flask on `http://127.0.0.1:5001`.
+   - SQLite DB file (`bytepath-backend/students.db`) is created automatically; remove it to reset.
 4. New terminal: `npm install && npm run dev`
-5. Verify `http://localhost:5173` loads the instructor dashboard, and API hits `http://127.0.0.1:5000`.
+   - Vite serves on `http://localhost:5173`.
+   - Optional: create `.env` with `VITE_API_BASE=http://127.0.0.1:5001/api` if the API lives elsewhere.
+5. Smoke checks:
+   - Browser: `http://127.0.0.1:5001/professor` to confirm the admin portal and CSV upload form.
+   - `curl http://127.0.0.1:5001/api/students` should return an empty paginated payload.
+   - Browser: `http://localhost:5173` → Students page loads roster data through the API without CORS errors.
 
-Each teammate must screen-record themselves going from git clone → dual servers running to prove fluency.
+Each teammate should screen-record going from git clone → both servers running → roster fetch to prove fluency.
 
 ## 3. System Diagram (application vs delivery)
 ```
-┌──────────────┐      HTTPS       ┌──────────────────┐       SQLAlchemy       ┌──────────────┐
-│ Vite/React   │ ───────────────▶ │ Flask REST API   │ ─────────────────────▶ │ SQLite / PG  │
-│ (Application │ ◀─────────────── │ (Delivery: HTTP) │ ◀───────────────────── │ (Delivery: DB│
-│   Logic)     │                  │ Business services │                        │   driver)    │
-└──────────────┘                  └──────────────────┘                        └──────────────┘
+┌──────────────┐  fetch/json   ┌──────────────────┐   SQLAlchemy ORM   ┌───────────────┐
+│ React/Vite   │ ─────────────▶│ Flask REST/Views │ ──────────────────▶│ SQLite DB     │
+│ (Application │ ◀──────────── │ (Delivery: HTTP) │ ◀──────────────────│ (Delivery: DB)│
+│  state, Py   │  redirects    │ Student lookup    │   file + migrations│               │
+│  runtime)    │               │ CSV ingest views  │                    │               │
+└──────────────┘               └──────────────────┘                    └───────────────┘
 ```
-- **Application layer**: question progression state machine, CSV parsing helpers, analytics reducers (lives in `src/` and `bytepath-backend/models.py`).
-- **Delivery mechanisms**: HTTP transport handled by Flask blueprints (`app.py`), persistence handled by SQLAlchemy ORM in `database.py`.
+- Application layer: topic progression state machine, embedded Python interpreter, CSV upload UI (`src/`).
+- Delivery: Flask blueprints/templates + JSON endpoints in `bytepath-backend/app.py` and persistence via `models.py`/`database.py`.
 
 ## 4. API Reference Snapshot
-| Endpoint | Method | Description | Primary Owner |
-|----------|--------|-------------|---------------|
-| `/api/students` | GET | Paginated roster with search on name/email; query params `page`, `page_size`, `search`. | Marena |
-| `/api/students/upload` | POST (multipart) | CSV ingest; returns counts + error rows. | Matt |
-| `/api/students/template` | GET | Downloads canonical CSV template. | Vicente |
+| Endpoint | Method | Description | Notes |
+|----------|--------|-------------|-------|
+| `/api/students` | GET | Paginated roster with optional case-insensitive search on first name, last name, or email. | Default `page=1`, `page_size=20`. |
+| `/api/students/upload` | POST (multipart/form-data) | Ingest CSV rows, upserting by email and returning summary + validation errors. | Requires `file` field containing `.csv`. |
+| `/api/students/template` | GET | Downloadable CSV template with sample rows. | Returns `text/csv` attachment. |
 
-Full OpenAPI spec lives in `Markdown Docs/openapi.yaml`; link it during the meeting and show Swagger UI mock.
+### GET `/api/students`
+Query params: `page` (int), `page_size` (int), `search` (string).
 
-## 5. Tests To Run During Meeting
-- **Manual acceptance (current)**: Upload malformed CSV (expect 400), upload valid CSV (expect success), full student question flow.
-- **Automated backlog**: Vitest suite (`npm run test -- --runInBand`) for roster UI and CSV preview plus Pytest (`pytest bytepath-backend/tests`) for analytics queries. These suites are being authored now; once merged, add them to the live meeting checklist.
-- Responsible tester rotates weekly opposite the demo owner; they report pass/fail plus any regressions.
+Response shape:
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "email": "student@moravian.edu",
+      "first_name": "Student",
+      "last_name": "Example",
+      "created_at": "2025-11-14T14:13:02.478213",
+      "updated_at": "2025-11-14T14:13:02.478213"
+    }
+  ],
+  "page": 1,
+  "page_size": 20,
+  "total": 1,
+  "total_pages": 1
+}
+```
+
+### POST `/api/students/upload`
+Form-data field `file` must be a CSV with headers `first_name,last_name,email`. Unknown columns are normalized (spaces → `_`, case-insensitive) and `name` is split if separate first/last names are missing.
+
+Returns:
+```json
+{
+  "summary": {
+    "inserted": 24,
+    "updated": 2,
+    "skipped": 0,
+    "total_processed": 26
+  },
+  "errors": [
+    { "line": 4, "reason": "Missing email" }
+  ]
+}
+```
+- `inserted`: new rows committed.
+- `updated`: existing student records where names changed.
+- `skipped`: currently unused (always `0` because duplicates count as `updated`), call this out during the meeting.
+- `errors`: row-level validation failures; the upload still succeeds unless an unexpected exception is raised (500).
+
+### GET `/api/students/template`
+Returns the canonical CSV sample file (`students_template.csv`) so professors can align headers before uploading.
+
+Complementary HTML endpoints to mention:
+- `POST /upload`: identical CSV logic but triggered from the professor portal with flash messages.
+- `POST /clear`: wipes the roster (no auth yet).
+- `POST /student`: verifies an email then redirects to `BYTEPATH_URL`.
+
+## 5. Demo & Test Checklist
+- **API smoke**: `curl http://127.0.0.1:5001/api/students?page=1&page_size=5` after seeding the DB to prove pagination metadata updates.
+- **CSV ingest happy path**: Upload a small CSV you create locally (first_name,last_name,email) via `/professor` and confirm the summary banner + Students page table refresh.
+- **CSV validation**: Upload a file with missing email / wrong extension to show error responses and the `errors` array.
+- **Student access flow**: Add yourself through CSV, visit `/student`, enter your email, and confirm redirect to the Vite front-end with `?email=...`.
+- **Bytepath UI**: In the React app, switch between learning/quiz modes, run a code sample (verifies Pyodide), and open the Students page to prove fetch/upload features.
+- **Regression note**: No automated Vitest/Pytest suites yet—flag this gap and mention manual testing cadence.
 
 ## 6. Challenges & Active Issues
-- ✅ CSV upload validation without blocking UI (solved via streaming parser + progress modal).
-- ✅ Paginated roster caching bug fixed by normalizing `page` query params on the client.
-- ⚠ Student analytics graphs still rely on mocked data; real aggregation pending DB migrations.
-- ⚠ OAuth handoff with Moravian IdP waiting on client secret paperwork; currently using stub login.
+- ⚠ **Auth gap**: Student access is still an email lookup plus redirect; OAuth with the Moravian IdP is pending credentials. Professor portal and API endpoints run without auth.
+- ⚠ **Upload summary accuracy**: `skipped` is never incremented inside `/api/students/upload`, so duplicates show under `updated` and the skipped count is misleading.
+- ⚠ **Testing debt**: Neither the React app nor Flask API has automated coverage. Need Vitest for roster UI + CSV flows and Pytest for API endpoints.
+- ⚠ **Data seeding**: SQLite file lives inside the repo tree, so we must avoid committing it; add a scripted seed/reset process before finals week demos.
 
 ## 7. Work Distribution Snapshot
-- **Deborah**: Frontend scaffolding, topic navigation UI, meeting facilitator.
-- **Marena**: Instructor dashboard UX, `/api/students` pagination, QA checklist ownership.
-- **Matt**: CSV upload endpoint, deployment automation.
-- **Vicente**: Database schema, ORM models, analytics aggregation draft + infra diagram.
+- **Deborah** – Leads the React Bytepath experience (topic tree, quiz engine, embedded Python runtime) and owns the Students page wiring to the API.
+- **Marena** – Partners on front-end UX, especially navigation, styling, and QA scripts for the Bytepath journey and student access messaging.
+- **Matt** – Owns the Flask service (`app.py`), CSV ingestion pipeline, REST endpoints, and progress meeting facilitation.
+- **Vicente** – Manages database schema/SQLAlchemy models, deployment/run scripts, and infrastructure documentation (OpenAPI + diagrams).
 
+Confirm each section during the meeting so stakeholders hear a consistent status update.
