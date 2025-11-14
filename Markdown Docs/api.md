@@ -109,13 +109,9 @@ Complementary HTML endpoints to mention:
 ## 6. Challenges & Active Issues
 - ⚠ **Auth gap**: Student access is still an email lookup plus redirect; OAuth with the Moravian IdP is pending credentials. Professor portal and API endpoints run without auth.
 - ⚠ **Upload summary accuracy**: `skipped` is never incremented inside `/api/students/upload`, so duplicates show under `updated` and the skipped count is misleading.
-- ⚠ **Testing debt**: Neither the React app nor Flask API has automated coverage. Need Vitest for roster UI + CSV flows and Pytest for API endpoints.
-- ⚠ **Data seeding**: SQLite file lives inside the repo tree, so we must avoid committing it; add a scripted seed/reset process before finals week demos.
+- Separating all of the questions from the front-end as well as in general separate. 
+- Scheduling meeting times
+- Organizing the project and understanding
 
-## 7. Work Distribution Snapshot
-- **Deborah** – Leads the React Bytepath experience (topic tree, quiz engine, embedded Python runtime) and owns the Students page wiring to the API.
-- **Marena** – Partners on front-end UX, especially navigation, styling, and QA scripts for the Bytepath journey and student access messaging.
-- **Matt** – Owns the Flask service (`app.py`), CSV ingestion pipeline, REST endpoints, and progress meeting facilitation.
-- **Vicente** – Manages database schema/SQLAlchemy models, deployment/run scripts, and infrastructure documentation (OpenAPI + diagrams).
 
 Confirm each section during the meeting so stakeholders hear a consistent status update.
