@@ -14,7 +14,7 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///students.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your-secret-key-here'  # Change this in production
-app.config['SNAKEBYTES_URL'] = os.environ.get('SNAKEBYTES_URL', 'http://localhost:5173')
+app.config['BYTEPATH_URL'] = os.environ.get('BYTEPATH_URL', 'http://localhost:5173')
 
 init_db(app)
 CORS(app)  # Enable CORS for API access
@@ -59,7 +59,7 @@ def professor_portal():
 
 @app.route('/student', methods=['GET', 'POST'])
 def student_access():
-    """Simple email check so students can get to SnakeBytes resources."""
+    """Simple email check so students can get to Bytepath resources."""
     email = ''
     error = None
 
@@ -74,7 +74,7 @@ def student_access():
             if not student:
                 error = 'Email not found. Double-check the spelling or ask your professor to add you.'
             else:
-                target_url = app.config.get('SNAKEBYTES_URL') or '/'
+                target_url = app.config.get('BYTEPATH_URL') or '/'
                 separator = '&' if '?' in target_url else '?'
                 redirect_url = f"{target_url}{separator}{urlencode({'email': email})}" if email else target_url
                 return redirect(redirect_url)
@@ -83,7 +83,7 @@ def student_access():
         'student_access.html',
         email=email,
         error=error,
-        snakebytes_url=app.config['SNAKEBYTES_URL']
+        bytepath_url=app.config['BYTEPATH_URL']
     )
 
 

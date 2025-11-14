@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Access • SnakeBytes</title>
+    <title>Student Access • Bytepath</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='HomePage.css') }}">
 </head>
 <body class="student-body">
@@ -12,7 +12,7 @@
 
         <header class="student-hero">
             <p class="eyebrow">Student Access</p>
-            <h1>Verify your Moravian email to open SnakeBytes.</h1>
+            <h1>Verify your Moravian email to open Bytepath.</h1>
             <p class="description">This is a temporary access flow. Once we ship OAuth, this page will evolve into the full sign-in experience.</p>
         </header>
 
@@ -28,7 +28,7 @@
                     value="{{ email }}"
                     required
                 >
-                <button type="submit">Unlock SnakeBytes</button>
+                <button type="submit">Unlock Bytepath</button>
             </div>
             <small>Only students added by their professor can proceed.</small>
         </form>
@@ -46,8 +46,8 @@
 
         <section class="access-card info">
             <h2>What happens next</h2>
-            <p>As soon as we find your address, we'll take you directly to the SnakeBytes homepage. If that redirect doesn't happen, use the button below.</p>
-            <a class="primary-link" href="{{ snakebytes_url }}" target="_blank" rel="noopener">Open SnakeBytes</a>
+            <p>As soon as we find your address, we'll take you directly to the Bytepath homepage. If that redirect doesn't happen, use the button below.</p>
+            <a class="primary-link" href="{{ bytepath_url }}" target="_blank" rel="noopener">Open Bytepath</a>
         </section>
     </div>
 </body>

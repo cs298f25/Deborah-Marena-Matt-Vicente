@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SnakeBytes Access Portal</title>
+    <title>Bytepath Access Portal</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='HomePage.css') }}">
 </head>
 <body class="home-body">
@@ -13,7 +13,7 @@
                 <span class="logo">🐍</span>
                 <div>
                     <p class="eyebrow">Moravian University</p>
-                    <p class="brand-name">SnakeBytes</p>
+                    <p class="brand-name">Bytepath</p>
                 </div>
             </div>
             <div class="nav-actions">
@@ -24,9 +24,9 @@
 
         <header class="hero">
             <p class="eyebrow">Welcome</p>
-            <h1>Choose how you would like to use SnakeBytes.</h1>
+            <h1>Choose how you would like to use Bytepath.</h1>
             <p class="description">
-                SnakeBytes is a lightweight collection of Python practice bites. Use this portal to verify
+                Bytepath is a lightweight collection of Python practice bites. Use this portal to verify
                 your email if you are a student or manage your roster if you are a professor.
             </p>
         </header>
@@ -36,14 +36,14 @@
                 <div class="card-icon">🎓</div>
                 <h2>I'm a Student</h2>
                 <p>
-                    Confirm your Moravian email to unlock SnakeBytes instantly. No passwords today—just let us know who you are.
+                    Confirm your Moravian email to unlock Bytepath instantly. No passwords today—just let us know who you are.
                 </p>
                 <ul>
                     <li>Fast email check</li>
                     <li>Immediate access to practice content</li>
                     <li>Works on any device</li>
                 </ul>
-                <a class="primary-link" href="{{ url_for('student_access') }}">Access SnakeBytes</a>
+                <a class="primary-link" href="{{ url_for('student_access') }}">Access Bytepath</a>
             </article>
 
             <article class="role-card professor-card">
@@ -74,14 +74,10 @@
                 </div>
                 <div class="info-item">
                     <span>3</span>
-                    <p>Once verified, students launch SnakeBytes and start coding.</p>
+                    <p>Once verified, students launch Bytepath and start coding.</p>
                 </div>
             </div>
         </section>
-
-        <footer class="home-footer">
-            <small>Need help? Email <a href="mailto:support@snakebytes.dev">support@snakebytes.dev</a></small>
-        </footer>
     </div>
 </body>
 </html>
