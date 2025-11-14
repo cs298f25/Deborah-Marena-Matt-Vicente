@@ -324,9 +324,12 @@
 
                 <div class="csv-format">
                     <h4>📋 CSV Format Required:</h4>
-                    <code>name,email
-John Smith,jsmith@moravian.edu
-Jane Doe,jdoe@moravian.edu</code>
+                    <code>first_name,last_name,email
+                        <br>
+                        <br> Example:
+                        <br>John,Smith,jsmith@moravian.edu
+                        <br>Jane,Doe,jdoe@moravian.edu
+                    </code>
                 </div>
             </div>
 
@@ -348,7 +351,7 @@ Jane Doe,jdoe@moravian.edu</code>
                         <tbody>
                             {% for student in students %}
                                 <tr>
-                                    <td>{{ student.name }}</td>
+                                    <td>{{ student.first_name }} {{ student.last_name }}</td>
                                     <td>{{ student.email }}</td>
                                 </tr>
                             {% endfor %}
