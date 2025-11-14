@@ -23,7 +23,7 @@ OR:
 
 
 ## System Diagram
-
+```text
 ┌─────────────────┐     ┌──────────────────────┐     ┌───────────────────┐
 │  Frontend       │     │  Backend             │     │  Database         │
 │  (TypeScript/   │◄───►│  (Python/Flask)      │◄───►│  (SQLite)         │
@@ -31,5 +31,6 @@ OR:
 └─────────────────┘     │  - Authentication    │     └───────────────────┘
                         │  - File Processing   │
                         └──────────────────────┘
+```
 
 
