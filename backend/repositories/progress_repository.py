@@ -1,0 +1,35 @@
+from __future__ import annotations
+
+from typing import Iterable, Optional
+
+from backend.models import StudentProgress, db
+
+
+def get_by_user(user_id: int) -> Iterable[StudentProgress]:
+    return (
+        db.session.execute(
+            db.select(StudentProgress)
+            .filter_by(user_id=user_id)
+            .order_by(StudentProgress.last_accessed.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+
+def get_by_user_and_topic(user_id: int, topic_id: str) -> Optional[StudentProgress]:
+    return db.session.execute(
+        db.select(StudentProgress).filter_by(user_id=user_id, topic=topic_id)
+    ).scalar_one_or_none()
+
+
+def add_progress(progress: StudentProgress) -> StudentProgress:
+    db.session.add(progress)
+    db.session.flush()
+    return progress
+
+
+def save(progress: StudentProgress) -> StudentProgress:
+    db.session.flush()
+    return progress
+

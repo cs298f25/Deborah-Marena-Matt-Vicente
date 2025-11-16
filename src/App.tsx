@@ -10,6 +10,13 @@ import LockedTopicScreen from './components/LockedTopicScreen.tsx';
 import { getPythonLoadPromise } from './python.ts';
 import StudentsPage from './pages/StudentsPage.tsx';
 import './App.css';
+import LoginScreen from './components/LoginScreen';
+import { authService } from './services/auth';
+import type { User } from './services/auth';
+import { responsesService } from './services/responses';
+import { progressService } from './services/progress';
+import InstructorDashboard from './pages/InstructorDashboard';
+import StudentDashboard from './pages/StudentDashboard';
 
 export const SKIPPED = Symbol('(skipped)');
 
@@ -30,7 +37,7 @@ const getAllTopics = (): Topic[] => {
 
 
 function App() {
-  const [currentScreen, setCurrentScreen] = useState<'welcome' | 'question' | 'locked-topic' | 'students'>('welcome');
+  const [currentScreen, setCurrentScreen] = useState<'welcome' | 'question' | 'locked-topic' | 'students' | 'dashboard'>('welcome');
   let [isLoading, setIsLoading] = useState(true);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   let [topicToSelectAfterLoading, setTopicToSelectAfterLoading] = useState<Topic | null>(null);
@@ -48,12 +55,14 @@ function App() {
     saved = saved?.replaceAll('_', '-') || null; // convert old format to new format
     return new Set<string>(saved ? JSON.parse(saved) : []);
   });
+  const [currentUser, setCurrentUser] = useState<User | null>(() => authService.getCurrentUser());
   useEffect(() => {
     localStorage.setItem('completedTopics', JSON.stringify(Array.from(completedTopics)));
   }, [completedTopics]);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set<string>());
   const [questionList, setQuestionList] = useState<(Question | null)[]>([]);
   const [questionAnswers, setQuestionAnswers] = useState<(Answer | typeof SKIPPED)[]>([]);
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const contentAreaRef = useRef<HTMLDivElement>(null);
 
   // Load Python interpreter
@@ -149,7 +158,30 @@ function App() {
     });
   }, []);
 
-  const selectTopic = (topic: Topic) => {
+  const resetState = () => {
+    setCurrentScreen('welcome');
+    setCurrentTopic(null);
+    setCurrentSubtopic(null);
+    setSharedCode(null);
+    setQuestionList([]);
+    setQuestionAnswers([]);
+    setCompletedTopics(new Set());
+    setExpandedGroups(new Set());
+    setMode('learning');
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    localStorage.removeItem('completedTopics');
+    resetState();
+    setCurrentUser(null);
+  };
+
+  if (!currentUser) {
+    return <LoginScreen onLogin={(user) => setCurrentUser(user)} />;
+  }
+
+  function selectTopic(topic: Topic) {
     if (isLoading) {
       setTopicToSelectAfterLoading(topic);
       topicToSelectAfterLoading = topic; // just in case loading is done this iteration
@@ -177,7 +209,7 @@ function App() {
     
     // Update URL hash
     window.location.hash = topic.id;
-  };
+  }
 
   const toggleGroup = (groupId: string) => {
     setExpandedGroups(prev => {
@@ -217,7 +249,9 @@ function App() {
         });
       } else {
         // Topic is not completed, add a new question
-        setQuestionList(prev => [...prev, subtopic.generateQuestion()]);
+        const nextQuestion = subtopic.generateQuestion();
+        setQuestionList(prev => [...prev, nextQuestion]);
+        setQuestionStartTime(Date.now());
       }
       // Scroll to the new question after it's added
       setTimeout(() => {
@@ -231,7 +265,7 @@ function App() {
     }
   };
 
-  const handleAnswerSelect = (answer: Answer | undefined, question: Question) => {
+  const handleAnswerSelect = async (answer: Answer | undefined, question: Question) => {
     if (answer === undefined && !completedTopics.has(currentTopic?.id || '')) { return; }
 
     const skipped = answer === undefined;
@@ -259,6 +293,29 @@ function App() {
 
     // Add a new question to the list after a short delay
     setTimeout(() => { addQuestion(); }, skipped ? 25 : 500);
+
+    if (currentUser && currentTopic && currentSubtopic) {
+      try {
+        const responseData = responsesService.formatResponseData(
+          currentUser.id,
+          currentTopic.id,
+          currentSubtopic.constructor.name,
+          question,
+          answer ?? null,
+          isCorrect,
+          Math.floor((Date.now() - questionStartTime) / 1000),
+        );
+
+        await responsesService.submitResponse(responseData);
+
+        await progressService.updateProgress(currentUser.id, currentTopic.id, {
+          subtopics_completed: currentTopic.numCompletedSubtopics,
+          total_subtopics: currentTopic.subtopics.length,
+        });
+      } catch (error) {
+        console.error('Failed to sync to backend:', error);
+      }
+    }
   };
 
   const handleRestartTopic = () => {
@@ -301,24 +358,48 @@ function App() {
           </tr>
           <tr><td className="subtitle">Learning with Small Python Snippets</td></tr>
         </tbody></table>
-        <div className="mode-toggle">
-          <button 
-            className={`toggle-button ${mode === 'learning' ? 'active' : ''}`}
-            onClick={() => setMode('learning')}
-          >📚 Learning</button>
-          <button 
-            className={`toggle-button ${mode === 'quiz' ? 'active' : ''}`}
-            onClick={() => setMode('quiz')}
-          >✏️ Quiz</button>
-          <button 
-            className={`toggle-button ${currentScreen === 'students' ? 'active' : ''}`}
-            onClick={() => setCurrentScreen('students')}
-          >👥 Students</button>
+        <div className="header-actions">
+          <div className="mode-toggle">
+            <button 
+              className={`toggle-button ${mode === 'learning' ? 'active' : ''}`}
+              onClick={() => setMode('learning')}
+            >📚 Learning</button>
+            <button 
+              className={`toggle-button ${mode === 'quiz' ? 'active' : ''}`}
+              onClick={() => setMode('quiz')}
+            >✏️ Quiz</button>
+            {currentUser.role === 'instructor' && (
+              <button 
+                className={`toggle-button ${currentScreen === 'students' ? 'active' : ''}`}
+                onClick={() => setCurrentScreen('students')}
+              >👥 Students</button>
+            )}
+          </div>
+          <div className="header-buttons">
+            <button
+              onClick={() => setCurrentScreen('dashboard')}
+              className={`dashboard-button ${currentScreen === 'dashboard' ? 'active' : ''}`}
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={handleLogout}
+              className="logout-button"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="App-main">
-        {isLoading ? (
+        {currentScreen === 'dashboard' ? (
+          currentUser.role === 'instructor' ? (
+            <InstructorDashboard />
+          ) : (
+            <StudentDashboard user={currentUser} />
+          )
+        ) : isLoading ? (
           <div className="loading-screen">
             <div className="loading-content">
               {loadingError ? (
@@ -354,7 +435,7 @@ function App() {
                       </div>
                       <span className={`group-status-indicator ${groupStatus}`}>
                         {groupStatus === 'completed' ? '✓' : 
-                         groupStatus === 'in-progress' ? '→' : '→'}
+                          groupStatus === 'in-progress' ? '→' : '→'}
                       </span>
                     </div>
                     {isExpanded && (
@@ -367,8 +448,8 @@ function App() {
                             
                             const accessible = subItem.isAccessible(completedTopics);
                             const status = completedTopics.has(subItem.id) ? 'completed' : 
-                                         completedSubtopics > 0 ? 'in-progress' : 
-                                         accessible ? 'available' : 'locked';
+                                          completedSubtopics > 0 ? 'in-progress' : 
+                                          accessible ? 'available' : 'locked';
                             
                             return (
                               <div 
@@ -380,8 +461,8 @@ function App() {
                                   <span className="sidebar-item-title">{subItem.name}</span>
                                   <span className={`status-indicator ${status}`}>
                                     {status === 'completed' ? '✓' : 
-                                     status === 'in-progress' ? '→' : 
-                                     status === 'available' ? '→' : '🔒'}
+                                      status === 'in-progress' ? '→' : 
+                                      status === 'available' ? '→' : '🔒'}
                                   </span>
                                 </div>
                                 {currentTopic === subItem && (
@@ -409,8 +490,8 @@ function App() {
                 
                 const accessible = item.isAccessible(completedTopics);
                 const status = completedTopics.has(item.id) ? 'completed' : 
-                             completedSubtopics > 0 ? 'in-progress' : 
-                             accessible ? 'available' : 'locked';
+                              completedSubtopics > 0 ? 'in-progress' : 
+                              accessible ? 'available' : 'locked';
                 
                 return (
                   <div 
@@ -422,8 +503,8 @@ function App() {
                       <span className="sidebar-item-title">{item.name}</span>
                       <span className={`status-indicator ${status}`}>
                         {status === 'completed' ? '✓' : 
-                         status === 'in-progress' ? '→' : 
-                         status === 'available' ? '→' : '🔒'}
+                          status === 'in-progress' ? '→' : 
+                          status === 'available' ? '→' : '🔒'}
                       </span>
                     </div>
                     {currentTopic === item && (

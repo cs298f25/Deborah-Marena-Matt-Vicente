@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "axios": "^1.13.2",
     "canvas-confetti": "^1.9.3",
     "dedent-js": "^1.0.1",
     "json5": "^2.2.3",

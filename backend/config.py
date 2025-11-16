@@ -1,0 +1,50 @@
+import os
+
+
+class Config:
+    """Base configuration shared across environments."""
+
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+    SQLALCHEMY_DATABASE_URI = (
+        f"sqlite:///{os.path.join(BASE_DIR, 'bytepath.db')}"
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    JSON_SORT_KEYS = False
+    CORS_ORIGINS = ["http://localhost:5173"]
+    SECRET_KEY = os.environ.get("BYTEPATH_SECRET_KEY", "dev-secret-key-change-me")
+
+
+class DevelopmentConfig(Config):
+    """Configuration for local development."""
+
+    DEBUG = True
+
+
+class ProductionConfig(Config):
+    """Configuration for production deployments."""
+
+    DEBUG = False
+
+
+class TestingConfig(Config):
+    """Configuration for running automated tests."""
+
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+
+
+config_by_name = {
+    "development": DevelopmentConfig,
+    "production": ProductionConfig,
+    "testing": TestingConfig,
+}
+
+
+def get_config(config_name: str | None = None) -> type[Config]:
+    """Fetch the configuration class matching the provided name."""
+
+    if not config_name:
+        return DevelopmentConfig
+
+    return config_by_name.get(config_name.lower(), DevelopmentConfig)
+
