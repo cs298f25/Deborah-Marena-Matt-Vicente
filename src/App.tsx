@@ -425,6 +425,10 @@ function App() {
               )}
             </div>
           </div>
+        ) : currentScreen === 'students' ? (
+          <div className="content-area" ref={contentAreaRef}>
+            <StudentsPage />
+          </div>
         ) : (
           <>
             <div className="sidebar">
@@ -557,22 +561,18 @@ function App() {
             </div>
           )}
 
-          {currentScreen === 'locked-topic' && currentTopic && (
-            <LockedTopicScreen
-              topic={currentTopic}
-              completedTopics={completedTopics}
-              onTopicSelect={selectTopic}
-            />
-          )}
+              {currentScreen === 'locked-topic' && currentTopic && (
+                <LockedTopicScreen
+                  topic={currentTopic}
+                  completedTopics={completedTopics}
+                  onTopicSelect={selectTopic}
+                />
+              )}
 
-          {currentScreen === 'students' && (
-            <StudentsPage />
-          )}
-
-          {currentScreen === 'question' && (
-            <div className="topic-container">
-              {sharedCode && (
-                <div className="shared-code">
+              {currentScreen === 'question' && (
+                <div className="topic-container">
+                  {sharedCode && (
+                    <div className="shared-code">
                   <div className="shared-code-header">Code shared by all questions in this topic:</div>
                   <code className="language-python">
                     {sharedCode}
