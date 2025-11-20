@@ -236,15 +236,15 @@ function App() {
     toggleGroup(group.id);
   };
 
-  const startTopic = () => {
+  function startTopic() {
     currentTopic?.start();
     setSharedCode(currentTopic?.sharedCode || null);
     setQuestionList([]);
     setQuestionAnswers([]);
     addQuestion();
-  };
+  }
 
-  const addQuestion = () => {
+  function addQuestion() {
     if (currentTopic) {
       const subtopic = currentTopic.getRandomSubtopic();
       setCurrentSubtopic(subtopic);
@@ -271,7 +271,7 @@ function App() {
         }
       }, 100);
     }
-  };
+  }
 
   const handleAnswerSelect = async (answer: Answer | undefined, question: Question) => {
     if (answer === undefined && !completedTopics.has(currentTopic?.id || '')) { return; }
@@ -371,11 +371,17 @@ function App() {
             <div className="mode-toggle">
               <button 
                 className={`toggle-button ${mode === 'learning' ? 'active' : ''}`}
-                onClick={() => setMode('learning')}
+                onClick={() => {
+                  setMode('learning');
+                  if (currentScreen === 'dashboard') setCurrentScreen('welcome');
+                }}
               >📚 Learning</button>
               <button 
                 className={`toggle-button ${mode === 'quiz' ? 'active' : ''}`}
-                onClick={() => setMode('quiz')}
+                onClick={() => {
+                  setMode('quiz');
+                  if (currentScreen === 'dashboard') setCurrentScreen('welcome');
+                }}
               >✏️ Quiz</button>
             </div>
           )}
@@ -389,7 +395,13 @@ function App() {
               </button>
             )}
             <button
-              onClick={() => setCurrentScreen('dashboard')}
+              onClick={() => {
+                if (!isInstructor && currentScreen === 'dashboard') {
+                  setCurrentScreen('welcome'); 
+                } else {
+                  setCurrentScreen('dashboard');
+                }
+              }}
               className={`dashboard-button ${currentScreen === 'dashboard' ? 'active' : ''}`}
             >
               Dashboard
