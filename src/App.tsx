@@ -8,7 +8,7 @@ import QuestionScreen from './components/QuestionScreen.tsx';
 import TopicCompletionScreen from './components/TopicCompletionScreen.tsx';
 import LockedTopicScreen from './components/LockedTopicScreen.tsx';
 import { getPythonLoadPromise } from './python.ts';
-import StudentsPage from './pages/StudentsPage.tsx';
+import StudentsPage from './pages/RosterUpload.tsx';
 import './App.css';
 import LoginScreen from './components/LoginScreen';
 import { authService } from './services/auth';
