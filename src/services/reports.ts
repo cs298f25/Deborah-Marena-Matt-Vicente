@@ -63,18 +63,17 @@ export interface ClassOverview {
 
 export const reportsService = {
   async getStudentReport(studentId: number): Promise<StudentReport> {
-    const response = await api.get(`/api/reports/student/${studentId}`);
+    const response = await api.get(`reports/student/${studentId}`);
     return response.data;
   },
 
   async getClassOverview(): Promise<ClassOverview> {
-    const response = await api.get('/api/reports/class/overview');
+    const response = await api.get('reports/class/overview');
     return response.data;
   },
 
   async getTopicReport(topicId: string): Promise<unknown> {
-    const response = await api.get(`/api/reports/topic/${topicId}`);
+    const response = await api.get(`reports/topic/${topicId}`);
     return response.data;
   },
 };
-

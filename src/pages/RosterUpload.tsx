@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE } from "../services/api";
 
 type Student = {
   id: number;
@@ -16,8 +17,6 @@ type Paginated<T> = {
   total: number;
   total_pages: number;
 };
-
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:5000/api";
 
 async function fetchStudents(page = 1, pageSize = 20, search = ""): Promise<Paginated<Student>> {
   const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
@@ -175,4 +174,3 @@ export default function StudentsPage() {
     </div>
   );
 }
-

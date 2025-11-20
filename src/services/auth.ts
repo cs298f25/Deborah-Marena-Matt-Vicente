@@ -9,12 +9,12 @@ export interface User {
 
 export const authService = {
   async login(email: string): Promise<User> {
-    const response = await api.post('/api/auth/login', { email });
+    const response = await api.post('auth/login', { email });
     return response.data.user;
   },
 
   async getProfile(): Promise<User> {
-    const response = await api.get('/api/auth/profile');
+    const response = await api.get('auth/profile');
     return response.data;
   },
 
@@ -32,4 +32,3 @@ export const authService = {
     localStorage.removeItem('authToken');
   },
 };
-

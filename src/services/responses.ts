@@ -30,11 +30,11 @@ export interface StudentResponse {
 
 export const responsesService = {
   async submitResponse(data: SubmitResponseRequest): Promise<void> {
-    await api.post('/api/responses', data);
+    await api.post('responses', data);
   },
 
   async getStudentResponses(studentId: number): Promise<StudentResponse[]> {
-    const response = await api.get(`/api/responses/student/${studentId}`);
+    const response = await api.get(`responses/student/${studentId}`);
     return response.data.responses;
   },
 
@@ -62,4 +62,3 @@ export const responsesService = {
     };
   },
 };
-

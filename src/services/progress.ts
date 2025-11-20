@@ -18,12 +18,12 @@ export interface UpdateProgressRequest {
 
 export const progressService = {
   async getUserProgress(userId: number): Promise<TopicProgress[]> {
-    const response = await api.get(`/api/progress/${userId}`);
+    const response = await api.get(`progress/${userId}`);
     return response.data.progress;
   },
 
   async getTopicProgress(userId: number, topic: string): Promise<TopicProgress> {
-    const response = await api.get(`/api/progress/${userId}/${topic}`);
+    const response = await api.get(`progress/${userId}/${topic}`);
     return response.data;
   },
 
@@ -32,11 +32,10 @@ export const progressService = {
     topic: string,
     data: UpdateProgressRequest,
   ): Promise<void> {
-    await api.put(`/api/progress/${userId}/${topic}`, data);
+    await api.put(`progress/${userId}/${topic}`, data);
   },
 
   async incrementProgress(userId: number, topic: string): Promise<void> {
-    await api.post(`/api/progress/${userId}/${topic}/increment`);
+    await api.post(`progress/${userId}/${topic}/increment`);
   },
 };
-
