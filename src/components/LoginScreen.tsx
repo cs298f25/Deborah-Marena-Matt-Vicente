@@ -1,0 +1,66 @@
+import { useState } from 'react';
+import { authService, User } from '../services/auth';
+import './LoginScreen.css';
+
+interface LoginScreenProps {
+  onLogin: (user: User) => void;
+}
+
+export default function LoginScreen({ onLogin }: LoginScreenProps) {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const user = await authService.login(email);
+      authService.saveUser(user);
+      onLogin(user);
+    } catch (err) {
+      setError('Failed to login. Please try again.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-screen">
+      <div className="login-container">
+        <h1>🎓 BytePath</h1>
+        <p className="login-subtitle">Python Learning Platform</p>
+
+        <form onSubmit={handleSubmit} className="login-form">
+          <input
+            type="email"
+            placeholder="Enter your Moravian email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={loading}
+            className="login-input"
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="login-button"
+          >
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
+
+          {error && <p className="login-error">{error}</p>}
+        </form>
+
+        <p className="login-note">
+          New users will be automatically registered
+        </p>
+      </div>
+    </div>
+  );
+}
+

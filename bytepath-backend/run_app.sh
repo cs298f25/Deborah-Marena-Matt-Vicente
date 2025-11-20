@@ -3,14 +3,15 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-VENV_DIR="$SCRIPT_DIR/venv"
-REQUIREMENTS_FILE="$SCRIPT_DIR/requirements.txt"
-PORT="5001"
+BACKEND_DIR="$ROOT_DIR/backend"
+VENV_DIR="$BACKEND_DIR/.venv"
+REQUIREMENTS_FILE="$BACKEND_DIR/requirements.txt"
+PORT="5000"
 BACKEND_PID=""
 CLEANED="no"
 
 start_backend() {
-  cd "$SCRIPT_DIR"
+  cd "$ROOT_DIR"
 
   if [ ! -d "$VENV_DIR" ]; then
     echo "Creating Python virtual environment..."
@@ -24,12 +25,9 @@ start_backend() {
   pip install --upgrade pip >/dev/null
   pip install -r "$REQUIREMENTS_FILE" >/dev/null
 
-  export FLASK_APP=app
-  export FLASK_ENV=development
-  export FLASK_RUN_PORT="$PORT"
-
   echo "Starting Flask API on http://127.0.0.1:$PORT ..."
-  flask run
+  python -m backend.app &
+  BACKEND_PID=$!
 }
 
 cleanup() {
@@ -52,8 +50,7 @@ handle_exit() {
 trap handle_exit INT TERM
 trap cleanup EXIT
 
-start_backend &
-BACKEND_PID=$!
+start_backend
 
 cd "$ROOT_DIR"
 

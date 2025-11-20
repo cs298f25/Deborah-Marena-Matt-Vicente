@@ -17,7 +17,7 @@ type Paginated<T> = {
   total_pages: number;
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:5001/api";
+const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:5000/api";
 
 async function fetchStudents(page = 1, pageSize = 20, search = ""): Promise<Paginated<Student>> {
   const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });

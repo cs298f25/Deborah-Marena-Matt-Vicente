@@ -1,0 +1,8 @@
+first_name,last_name,email
+Olivia,Chen,olivia.chen@example.com
+Mateo,Santana,mateo.santana@example.com
+Priya,Patel,priya.desai@example.com
+Lucas,Reed,lucas.reed@example.com
+Amira,Hassan,amira.hassan@example.com
+,,missing.fields@example.com
+

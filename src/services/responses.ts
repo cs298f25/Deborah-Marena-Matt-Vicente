@@ -1,0 +1,65 @@
+import api from './api';
+import { formatAnswer } from '../topics';
+import type { Question, Answer } from '../topics';
+
+export interface SubmitResponseRequest {
+  user_id: number;
+  topic: string;
+  subtopic_type: string;
+  question_code: string;
+  student_answer: string | null;
+  correct_answer: string;
+  is_correct: boolean;
+  status: 'correct' | 'incorrect' | 'skipped';
+  time_spent: number;
+}
+
+export interface StudentResponse {
+  id: number;
+  user_id: number;
+  topic: string;
+  subtopic_type: string;
+  question_code: string;
+  student_answer: string | null;
+  correct_answer: string;
+  is_correct: boolean;
+  status: string;
+  time_spent: number;
+  attempted_at: string;
+}
+
+export const responsesService = {
+  async submitResponse(data: SubmitResponseRequest): Promise<void> {
+    await api.post('/api/responses', data);
+  },
+
+  async getStudentResponses(studentId: number): Promise<StudentResponse[]> {
+    const response = await api.get(`/api/responses/student/${studentId}`);
+    return response.data.responses;
+  },
+
+  formatResponseData(
+    userId: number,
+    topicId: string,
+    subtopicType: string,
+    question: Question,
+    userAnswer: Answer | null,
+    isCorrect: boolean,
+    timeSpent: number,
+  ): SubmitResponseRequest {
+    const studentAnswer = userAnswer === null ? null : formatAnswer(userAnswer);
+
+    return {
+      user_id: userId,
+      topic: topicId,
+      subtopic_type: subtopicType,
+      question_code: question.code,
+      student_answer: studentAnswer,
+      correct_answer: formatAnswer(question.correct),
+      is_correct: isCorrect,
+      status: userAnswer === null ? 'skipped' : isCorrect ? 'correct' : 'incorrect',
+      time_spent: timeSpent,
+    };
+  },
+};
+
