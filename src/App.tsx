@@ -64,6 +64,7 @@ function App() {
   const [questionAnswers, setQuestionAnswers] = useState<(Answer | typeof SKIPPED)[]>([]);
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const contentAreaRef = useRef<HTMLDivElement>(null);
+  const isInstructor = currentUser?.role === 'instructor';
 
   // Load Python interpreter
   useEffect(() => {
@@ -157,6 +158,13 @@ function App() {
       'function-call': /\b[a-zA-Z_]\w*(?=\s*\()/g,
     });
   }, []);
+
+  // Instructors land on the dashboard immediately.
+  useEffect(() => {
+    if (isInstructor) {
+      setCurrentScreen('dashboard');
+    }
+  }, [isInstructor]);
 
   const resetState = () => {
     setCurrentScreen('welcome');
@@ -359,23 +367,27 @@ function App() {
           <tr><td className="subtitle">Learning with Small Python Snippets</td></tr>
         </tbody></table>
         <div className="header-actions">
-          <div className="mode-toggle">
-            <button 
-              className={`toggle-button ${mode === 'learning' ? 'active' : ''}`}
-              onClick={() => setMode('learning')}
-            >📚 Learning</button>
-            <button 
-              className={`toggle-button ${mode === 'quiz' ? 'active' : ''}`}
-              onClick={() => setMode('quiz')}
-            >✏️ Quiz</button>
-            {currentUser.role === 'instructor' && (
+          {!isInstructor && (
+            <div className="mode-toggle">
               <button 
-                className={`toggle-button ${currentScreen === 'students' ? 'active' : ''}`}
-                onClick={() => setCurrentScreen('students')}
-              >👥 Students</button>
-            )}
-          </div>
+                className={`toggle-button ${mode === 'learning' ? 'active' : ''}`}
+                onClick={() => setMode('learning')}
+              >📚 Learning</button>
+              <button 
+                className={`toggle-button ${mode === 'quiz' ? 'active' : ''}`}
+                onClick={() => setMode('quiz')}
+              >✏️ Quiz</button>
+            </div>
+          )}
           <div className="header-buttons">
+            {isInstructor && (
+              <button
+                onClick={() => setCurrentScreen('students')}
+                className={`dashboard-button ${currentScreen === 'students' ? 'active' : ''}`}
+              >
+                Students
+              </button>
+            )}
             <button
               onClick={() => setCurrentScreen('dashboard')}
               className={`dashboard-button ${currentScreen === 'dashboard' ? 'active' : ''}`}
