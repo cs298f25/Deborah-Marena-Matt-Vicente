@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from http import HTTPStatus
 
 from flask import Flask, jsonify
@@ -27,6 +28,9 @@ def create_app(config_name: str | None = None) -> Flask:
     """
 
     app = Flask(__name__)
+    # Use FLASK_ENV environment variable if config_name not provided
+    if config_name is None:
+        config_name = os.environ.get("FLASK_ENV", "development")
     config_class = get_config(config_name)
     app.config.from_object(config_class)
 
@@ -96,6 +100,8 @@ def _register_error_handlers(app: Flask) -> None:
         )
 
 
+# Application instance for Gunicorn
+application = create_app()
+
 if __name__ == "__main__":
-    application = create_app()
     application.run(host="0.0.0.0", port=5000)

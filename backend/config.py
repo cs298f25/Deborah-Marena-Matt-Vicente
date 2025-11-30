@@ -10,7 +10,9 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JSON_SORT_KEYS = False
-    CORS_ORIGINS = ["http://localhost:5173"]
+    CORS_ORIGINS = os.environ.get(
+        "CORS_ORIGINS", "http://localhost:5173"
+    ).split(",")
     SECRET_KEY = os.environ.get("BYTEPATH_SECRET_KEY", "dev-secret-key-change-me")
 
 
