@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from http import HTTPStatus
+from typing import Optional
 
 from flask import Flask, jsonify
 from flask_cors import CORS
@@ -19,7 +20,7 @@ from backend.routes import (
 )
 
 
-def create_app(config_name: str | None = None) -> Flask:
+def create_app(config_name: Optional[str] = None) -> Flask:
     """
     Application factory for the BytePath backend.
 

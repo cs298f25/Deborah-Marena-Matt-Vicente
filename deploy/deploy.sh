@@ -28,6 +28,10 @@ echo "Step 1: Installing system dependencies..."
 yum update -y
 yum install -y python3 python3-pip nodejs npm git
 
+# Check Python version
+PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' | cut -d. -f1,2)
+echo "Detected Python version: $PYTHON_VERSION"
+
 # Step 2: Setup backend
 echo ""
 echo "Step 2: Setting up backend..."
@@ -42,8 +46,10 @@ fi
 # Activate venv and install dependencies
 source .venv/bin/activate
 pip install --upgrade pip
+echo "Installing Python dependencies (this may take a minute)..."
 pip install -r requirements.txt
-pip install gunicorn
+# Ensure gunicorn is installed (in case it's not in requirements.txt)
+pip install gunicorn || true
 
 # Ensure database directory exists
 mkdir -p "$BACKEND_DIR"
@@ -113,7 +119,7 @@ After=network.target
 Type=simple
 User=$SERVICE_USER
 Group=$SERVICE_USER
-WorkingDirectory=$BACKEND_DIR
+WorkingDirectory=$PROJECT_ROOT
 Environment="PATH=$BACKEND_DIR/.venv/bin"
 EnvironmentFile=$BACKEND_DIR/.env
 ExecStart=$BACKEND_DIR/.venv/bin/gunicorn \
@@ -123,6 +129,7 @@ ExecStart=$BACKEND_DIR/.venv/bin/gunicorn \
     --access-logfile - \
     --error-logfile - \
     --log-level info \
+    --pythonpath $PROJECT_ROOT \
     backend.app:application
 Restart=always
 RestartSec=10

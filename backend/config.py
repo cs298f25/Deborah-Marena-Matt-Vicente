@@ -1,4 +1,5 @@
 import os
+from typing import Optional, Type
 
 
 class Config:
@@ -42,7 +43,7 @@ config_by_name = {
 }
 
 
-def get_config(config_name: str | None = None) -> type[Config]:
+def get_config(config_name: Optional[str] = None) -> Type[Config]:
     """Fetch the configuration class matching the provided name."""
 
     if not config_name:
