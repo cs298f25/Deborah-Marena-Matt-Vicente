@@ -88,7 +88,12 @@ export default function StudentsPage() {
   return (
     <div style={{ padding: "1rem 1.5rem", maxWidth: 1000, margin: "0 auto", color: "white" }}>
       <h2 style={{ margin: 0, marginBottom: ".5rem" }}>Students</h2>
-      <p style={{ opacity: .9, marginTop: 0 }}>Upload a CSV and browse the roster with pagination.</p>
+      <p style={{ opacity: .9, marginTop: 0 }}>
+        Upload a CSV and browse the roster with pagination. 
+        <span style={{ fontSize: "0.9em", display: "block", marginTop: "0.25rem", opacity: 0.8 }}>
+          Sample CSV files are located in: <code style={{ background: "rgba(0,0,0,0.3)", padding: "0.1rem 0.3rem", borderRadius: 4 }}>sample-data/students/</code>
+        </span>
+      </p>
 
       <div style={{
         display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap",
@@ -108,7 +113,25 @@ export default function StudentsPage() {
 
         <label style={{ display: "inline-block" }}>
           <span style={{ marginRight: 8, opacity: .9 }}>Upload CSV</span>
-          <input type="file" accept=".csv,text/csv" onChange={e => handleFile(e.target.files?.[0] || null)} disabled={uploading} />
+          <input 
+            type="file" 
+            accept=".csv,text/csv,text/plain" 
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) {
+                // Validate file extension
+                const fileName = file.name.toLowerCase();
+                if (!fileName.endsWith('.csv')) {
+                  alert('Please select a CSV file (.csv extension)');
+                  e.target.value = ''; // Reset input
+                  return;
+                }
+                handleFile(file);
+              }
+            }} 
+            disabled={uploading}
+            style={{ cursor: uploading ? "not-allowed" : "pointer" }}
+          />
         </label>
 
         <a href={`${API_BASE}/students/template`} style={{ color: "white", textDecoration: "underline" }}>
