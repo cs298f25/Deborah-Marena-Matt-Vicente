@@ -70,6 +70,23 @@ def _register_routes(app: Flask) -> None:
     app.register_blueprint(students_bp)
     app.register_blueprint(topics_bp)
 
+    @app.get("/")
+    def root():
+        """Return API information."""
+        return jsonify({
+            "name": "BytePath API",
+            "version": "1.0.0",
+            "status": "running",
+            "endpoints": {
+                "auth": "/api/auth",
+                "topics": "/api/topics",
+                "responses": "/api/responses",
+                "progress": "/api/progress",
+                "reports": "/api/reports",
+                "students": "/api/students"
+            }
+        }), HTTPStatus.OK
+
     @app.get("/health")
     def health_check():
         """Return a simple health check response."""
