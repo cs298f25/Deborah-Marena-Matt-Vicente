@@ -1,7 +1,7 @@
 .App {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: var(--bg-page);
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -9,12 +9,13 @@
 
 .App-header {
   padding: 1rem 2rem;
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--bg-gradient);
   backdrop-filter: blur(10px);
   display: flex;
   justify-content: space-between;
   align-items: center;
   height: 2.5rem;
+  color: var(--text-on-gradient);
 }
 
 .header-actions {
@@ -66,10 +67,10 @@
 
 .toggle-button {
   padding: 0.5rem 1rem;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 8px;
   background: transparent;
-  color: white;
+  color: var(--text-on-gradient);
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -78,7 +79,7 @@
 }
 
 .toggle-button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .toggle-button.active {
@@ -88,10 +89,10 @@
 
 .dashboard-button {
   padding: 0.5rem 1rem;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.15);
-  color: white;
+  color: var(--text-on-gradient);
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -108,12 +109,31 @@
   box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
 }
 
+.theme-toggle {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .logout-button {
   padding: 0.5rem 1rem;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
-  color: white;
+  color: var(--text-on-gradient);
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -134,9 +154,9 @@
 
 .sidebar {
   width: 275px;
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--bg-sidebar);
   backdrop-filter: blur(10px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid var(--border-card);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -151,34 +171,38 @@
 }
 
 .sidebar-item {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-sidebar-item);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 0.5rem;
   cursor: pointer;
   transition: all 0.3s ease;
   border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  color: var(--text-secondary);
 }
 
 .sidebar-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--bg-sidebar-item-active);
+  border-color: var(--border-card);
+  color: var(--text-primary);
 }
 
 .sidebar-item.active {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  background: var(--bg-sidebar-item-active);
+  border-left-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-card);
 }
 
 .sidebar-item.completed {
-  border-color: #4ade80 !important;
-  background: rgba(74, 222, 128, 0.1);
+  border-color: var(--color-success) !important;
+  background: rgba(16, 185, 129, 0.1);
 }
 
 .sidebar-item.in-progress {
-  border-color: #fbbf24 !important;
-  background: rgba(251, 191, 36, 0.1);
+  border-color: var(--color-warning) !important;
+  background: rgba(245, 158, 11, 0.1);
 }
 
 .sidebar-item.locked {
@@ -217,12 +241,12 @@
 }
 
 .status-indicator.completed {
-  background: #4ade80;
+  background: var(--color-success);
   color: white;
 }
 
 .status-indicator.in-progress {
-  background: #fbbf24;
+  background: var(--color-warning);
   color: white;
 }
 
@@ -246,14 +270,14 @@
 .progress-bar {
   flex: 1;
   height: 4px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--bg-sidebar-item);
   border-radius: 2px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4ade80, #22c55e);
+  background: var(--color-success);
   transition: width 0.3s ease;
 }
 
@@ -270,7 +294,7 @@
 }
 
 .sidebar-group-header {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-sidebar-item);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   cursor: pointer;
@@ -282,21 +306,22 @@
   font-weight: 600;
   font-size: 0.9rem;
   user-select: none;
+  color: var(--text-primary);
 }
 
 .sidebar-group-header:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--bg-sidebar-item-active);
+  border-color: var(--border-card);
 }
 
 .sidebar-group-header.completed {
-  border-color: #4ade80;
-  background: rgba(74, 222, 128, 0.15);
+  border-color: var(--color-success);
+  background: rgba(16, 185, 129, 0.15);
 }
 
 .sidebar-group-header.in-progress {
-  border-color: #fbbf24;
-  background: rgba(251, 191, 36, 0.15);
+  border-color: var(--color-warning);
+  background: rgba(245, 158, 11, 0.15);
 }
 
 .sidebar-group-header.available {
@@ -373,6 +398,9 @@
   align-items: flex-start;
   height: calc(100vh - 4.5rem);
   overflow-y: auto;
+  background: var(--bg-page);
+  padding: 2rem;
+}
 }
 
 .topic-container {
@@ -455,7 +483,7 @@
   font-size: 2rem;
   font-weight: bold;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -498,7 +526,7 @@
   justify-content: center;
   width: 100%;
   height: calc(100vh - 4.5rem);
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-gradient);
 }
 
 .loading-content {

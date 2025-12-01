@@ -3,15 +3,86 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+
+  /* Light Mode (Default) - Python Color Scheme */
+  --color-primary: #3776ab;
+  --color-primary-light: #4a8ec4;
+  --color-accent: #ffd343;
+  
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+  
+  --bg-page: #f8fafc;
+  --bg-gradient: linear-gradient(135deg, #3776ab 0%, #4a8ec4 50%, #2d6a9f 100%);
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card-hover: rgba(255, 255, 255, 1);
+  --bg-sidebar: rgba(255, 255, 255, 0.9);
+  --bg-sidebar-item: rgba(55, 118, 171, 0.1);
+  --bg-sidebar-item-active: rgba(55, 118, 171, 0.2);
+  --bg-code: #1e293b;
+  
+  --border-card: rgba(55, 118, 171, 0.2);
+  --border-hover: rgba(255, 211, 67, 0.5);
+  
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-on-gradient: #ffffff;
+  --text-code: #e2e8f0;
+  
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
+  
+  /* Dashboard card variables for light mode */
+  --bg-dashboard-card: rgba(255, 255, 255, 0.85);
+  --bg-dashboard-card-hover: rgba(255, 255, 255, 0.95);
+  --border-dashboard-card: rgba(55, 118, 171, 0.25);
+  --text-dashboard: #1e293b;
+}
+
+[data-theme="dark"] {
+  --color-primary: #60a5fa;
+  --color-primary-light: #93c5fd;
+  
+  --bg-page: #0f172a;
+  --bg-gradient: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 50%, #1a2f4a 100%);
+  --bg-card: rgba(30, 41, 59, 0.9);
+  --bg-card-hover: rgba(30, 41, 59, 1);
+  --bg-sidebar: rgba(30, 41, 59, 0.95);
+  --bg-sidebar-item: rgba(96, 165, 250, 0.1);
+  --bg-sidebar-item-active: rgba(96, 165, 250, 0.2);
+  --bg-code: #0f172a;
+  
+  --border-card: rgba(100, 116, 139, 0.2);
+  --border-hover: rgba(255, 211, 67, 0.4);
+  
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.4);
+  
+  /* Dashboard card variables for dark mode */
+  --bg-dashboard-card: rgba(255, 255, 255, 0.1);
+  --bg-dashboard-card-hover: rgba(255, 255, 255, 0.15);
+  --border-dashboard-card: rgba(255, 255, 255, 0.2);
+  --text-dashboard: #ffffff;
+}
+
+/* Focus states for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] :focus-visible {
+  outline-color: var(--color-accent);
 }
 
 body {

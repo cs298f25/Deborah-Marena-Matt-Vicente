@@ -17,6 +17,7 @@ import { responsesService } from './services/responses';
 import { progressService } from './services/progress';
 import InstructorDashboard from './pages/InstructorDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import { toggleTheme, getThemePreference } from './utils/theme';
 
 export const SKIPPED = Symbol('(skipped)');
 
@@ -64,6 +65,7 @@ function App() {
   const [questionAnswers, setQuestionAnswers] = useState<(Answer | typeof SKIPPED)[]>([]);
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const contentAreaRef = useRef<HTMLDivElement>(null);
+  const [theme, setThemeState] = useState<'light' | 'dark'>(getThemePreference());
   const isInstructor = currentUser?.role === 'instructor';
 
   // Load Python interpreter
@@ -405,6 +407,18 @@ function App() {
               className={`dashboard-button ${currentScreen === 'dashboard' ? 'active' : ''}`}
             >
               Dashboard
+            </button>
+            <button
+              onClick={() => {
+                const newTheme = toggleTheme();
+                setThemeState(newTheme);
+              }}
+              className="theme-toggle"
+              aria-label="Toggle dark mode"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              <span className="icon-sun" style={{ display: theme === 'dark' ? 'none' : 'inline' }}>☀️</span>
+              <span className="icon-moon" style={{ display: theme === 'dark' ? 'inline' : 'none' }}>🌙</span>
             </button>
             <button
               onClick={handleLogout}

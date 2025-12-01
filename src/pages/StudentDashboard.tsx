@@ -252,7 +252,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                               cy="30"
                               r="25"
                               fill="none"
-                              stroke={isComplete ? '#4ade80' : '#667eea'}
+                              stroke={isComplete ? '#4ade80' : 'var(--color-primary)'}
                               strokeWidth="4"
                               strokeDasharray={`${
                                 (Math.min(topic.completion_percentage, 100) / 100) * 157
