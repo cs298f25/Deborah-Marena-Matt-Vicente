@@ -35,6 +35,8 @@
 
 1. **SSH into EC2 and clone:**
    ```bash
+   ssh -i ~/.ssh/labsuser.pem ec2-user@publicIP
+   sudo yum install -y git
    cd ~
    git clone https://github.com/cs298f25/Deborah-Marena-Matt-Vicente.git
    cd Deborah-Marena-Matt-Vicente
