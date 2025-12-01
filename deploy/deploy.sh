@@ -26,21 +26,51 @@ fi
 echo ""
 echo "Step 1: Installing system dependencies..."
 yum update -y
-yum install -y python3 python3-pip nodejs npm git
 
-# Check Python version
-PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' | cut -d. -f1,2)
-echo "Detected Python version: $PYTHON_VERSION"
+# Detect Amazon Linux version and install appropriate Python
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    if [[ "$VERSION_ID" == "2023"* ]]; then
+        echo "Detected Amazon Linux 2023 - Installing Python 3.11..."
+        yum install -y python3.11 python3.11-pip python3.11-devel nodejs npm git gcc
+        PYTHON_CMD="python3.11"
+        PIP_CMD="pip3.11"
+    else
+        echo "Detected Amazon Linux 2 - Installing Python 3.11 from Amazon Linux Extras..."
+        amazon-linux-extras install python3.11 -y || yum install -y python3.11 python3.11-pip python3.11-devel
+        PYTHON_CMD="python3.11"
+        PIP_CMD="pip3.11"
+    fi
+else
+    echo "Warning: Could not detect OS version, trying default python3.11..."
+    yum install -y python3.11 python3.11-pip python3.11-devel nodejs npm git gcc || yum install -y python3 python3-pip nodejs npm git gcc
+    if command -v python3.11 &> /dev/null; then
+        PYTHON_CMD="python3.11"
+        PIP_CMD="pip3.11"
+    else
+        PYTHON_CMD="python3"
+        PIP_CMD="pip3"
+    fi
+fi
+
+# Verify Python version (must be 3.10+)
+PYTHON_VERSION=$($PYTHON_CMD --version 2>&1 | awk '{print $2}')
+echo "Using Python version: $PYTHON_VERSION"
+if ! $PYTHON_CMD -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)"; then
+    echo "ERROR: Python 3.10+ is required, but found $PYTHON_VERSION"
+    echo "Please install Python 3.10 or higher manually"
+    exit 1
+fi
 
 # Step 2: Setup backend
 echo ""
 echo "Step 2: Setting up backend..."
 cd "$BACKEND_DIR"
 
-# Create virtual environment if it doesn't exist
+# Create virtual environment if it doesn't exist (using detected Python version)
 if [ ! -d ".venv" ]; then
-    echo "Creating Python virtual environment..."
-    python3 -m venv .venv
+    echo "Creating Python virtual environment with $PYTHON_CMD..."
+    $PYTHON_CMD -m venv .venv
 fi
 
 # Activate venv and install dependencies
@@ -76,7 +106,7 @@ fi
 # Build frontend
 echo "Building frontend..."
 # Use EC2 public IP for API base URL
-EC2_IP="44.200.81.23"
+EC2_IP="18.232.125.59"
 export VITE_API_BASE="http://$EC2_IP:$BACKEND_PORT/api"
 echo "Setting VITE_API_BASE to http://$EC2_IP:$BACKEND_PORT/api"
 npm run build
@@ -95,7 +125,7 @@ if [ ! -f "$ENV_FILE" ]; then
 # BytePath Production Environment Variables
 FLASK_ENV=production
 BYTEPATH_SECRET_KEY=$(openssl rand -hex 32)
-CORS_ORIGINS=http://localhost:5173,http://44.200.81.23:5173
+CORS_ORIGINS=http://localhost:5173,http://18.232.125.59:5173
 EOF
     chown $SERVICE_USER:$SERVICE_USER "$ENV_FILE"
     chmod 600 "$ENV_FILE"
@@ -109,7 +139,13 @@ fi
 echo ""
 echo "Step 5: Creating systemd service files..."
 
-# Backend service
+# Backend service - determine Python path in venv
+PYTHON_VENV_PATH="$BACKEND_DIR/.venv/bin/$PYTHON_CMD"
+if [ ! -f "$PYTHON_VENV_PATH" ]; then
+    # Fallback to python3 in venv
+    PYTHON_VENV_PATH="$BACKEND_DIR/.venv/bin/python3"
+fi
+
 cat > /etc/systemd/system/bytepath-backend.service << EOF
 [Unit]
 Description=BytePath Backend API (Gunicorn)
@@ -122,7 +158,7 @@ Group=$SERVICE_USER
 WorkingDirectory=$PROJECT_ROOT
 Environment="PATH=$BACKEND_DIR/.venv/bin"
 EnvironmentFile=$BACKEND_DIR/.env
-ExecStart=$BACKEND_DIR/.venv/bin/gunicorn \
+ExecStart=$PYTHON_VENV_PATH -m gunicorn \
     --bind 0.0.0.0:$BACKEND_PORT \
     --workers 4 \
     --timeout 120 \
@@ -197,8 +233,8 @@ echo ""
 systemctl status bytepath-frontend --no-pager -l || true
 echo ""
 echo "Services are running on:"
-echo "  Backend:  http://44.200.81.23:$BACKEND_PORT"
-echo "  Frontend: http://44.200.81.23:$FRONTEND_PORT"
+echo "  Backend:  http://18.232.125.59:$BACKEND_PORT"
+echo "  Frontend: http://18.232.125.59:$FRONTEND_PORT"
 echo ""
 echo "Useful commands:"
 echo "  Check backend logs:  sudo journalctl -u bytepath-backend -f"

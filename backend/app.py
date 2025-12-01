@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from http import HTTPStatus
-from typing import Optional
+from typing import Optional, Union
 
 from flask import Flask, jsonify
 from flask_cors import CORS

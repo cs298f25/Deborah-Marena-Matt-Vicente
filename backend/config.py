@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Type
+from typing import Optional, Type, Union
 
 
 class Config:

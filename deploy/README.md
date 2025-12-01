@@ -4,7 +4,8 @@ This guide explains how to deploy BytePath on an Amazon EC2 instance.
 
 ## Prerequisites
 
-- EC2 instance running Amazon Linux 2 or Amazon Linux 2023
+- EC2 instance running **Amazon Linux 2023** (recommended) or Amazon Linux 2
+- Python 3.11 (installed automatically by the script)
 - SSH access to the instance
 - Root/sudo access
 
@@ -105,16 +106,16 @@ sudo systemctl stop bytepath-backend bytepath-frontend
 Edit `backend/.env` to configure:
 - `FLASK_ENV`: Set to `production`
 - `BYTEPATH_SECRET_KEY`: Secret key for Flask sessions (auto-generated)
-- `CORS_ORIGINS`: Comma-separated list of allowed origins (configured as `http://44.200.81.23:5173`)
+- `CORS_ORIGINS`: Comma-separated list of allowed origins (configured as `http://18.232.125.59:5173`)
 
-**Note:** The deployment script automatically configures CORS_ORIGINS with your EC2 IP (44.200.81.23). If you need to change it, edit `backend/.env` and restart:
+**Note:** The deployment script automatically configures CORS_ORIGINS with your EC2 IP (18.232.125.59). If you need to change it, edit `backend/.env` and restart:
 ```bash
 sudo systemctl restart bytepath-backend
 ```
 
 ### Frontend API Configuration
 
-The frontend API base URL is automatically set during deployment to `http://44.200.81.23:5000/api`. This is configured when building the frontend.
+The frontend API base URL is automatically set during deployment to `http://18.232.125.59:5000/api`. This is configured when building the frontend.
 
 ### Ports
 
