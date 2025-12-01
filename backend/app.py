@@ -9,7 +9,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 
 from backend.config import get_config
-from backend.models import db
+from backend.models import db, RosterStudent, UploadHistory  # Import models so SQLAlchemy discovers them
 from backend.routes import (
     auth_bp,
     progress_bp,

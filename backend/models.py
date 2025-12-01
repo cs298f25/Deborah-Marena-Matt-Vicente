@@ -132,6 +132,57 @@ class StudentProgress(db.Model):
         }
 
 
+class UploadHistory(db.Model):
+    """
+    Tracks all CSV upload operations (add/drop) with detailed change logs.
+    
+    Provides complete audit trail of student roster changes.
+    """
+
+    __tablename__ = "upload_history"
+
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    action = db.Column(db.String(20), nullable=False)  # 'add', 'drop', 'sync'
+    
+    # Summary stats
+    students_added = db.Column(db.Integer, default=0)
+    students_updated = db.Column(db.Integer, default=0)
+    students_removed = db.Column(db.Integer, default=0)
+    students_skipped = db.Column(db.Integer, default=0)
+    students_restored = db.Column(db.Integer, default=0)
+    students_not_found = db.Column(db.Integer, default=0)
+    total_processed = db.Column(db.Integer, default=0)
+    
+    # Full change log (JSON)
+    change_log = db.Column(db.Text, nullable=True)  # JSON array of changes
+
+    def __repr__(self) -> str:
+        return f"<UploadHistory {self.filename} {self.uploaded_at}>"
+
+    def to_dict(self) -> dict:
+        import json
+        return {
+            "id": self.id,
+            "filename": self.filename,
+            "uploaded_at": self.uploaded_at.isoformat() if self.uploaded_at else None,
+            "uploaded_by": self.uploaded_by,
+            "action": self.action,
+            "summary": {
+                "added": self.students_added,
+                "updated": self.students_updated,
+                "removed": self.students_removed,
+                "skipped": self.students_skipped,
+                "restored": self.students_restored,
+                "not_found": self.students_not_found,
+                "total": self.total_processed,
+            },
+            "changes": json.loads(self.change_log) if self.change_log else [],
+        }
+
+
 class RosterStudent(db.Model):
     """
     Lightweight roster table used for CSV uploads and instructor roster views.
@@ -150,6 +201,17 @@ class RosterStudent(db.Model):
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+    
+    # CRUD features
+    deleted_at = db.Column(db.DateTime, nullable=True, default=None)  # Soft delete
+    notes = db.Column(db.Text, nullable=True, default=None)  # Optional notes
+    
+    # Future class support (exists but not exposed in UI yet)
+    class_name = db.Column(db.String(100), nullable=True, default=None)  # NULL = unassigned
+    
+    # Upload tracking
+    last_updated_via = db.Column(db.String(20), nullable=True)  # 'csv_add', 'csv_drop', 'inline', 'manual'
+    last_upload_id = db.Column(db.Integer, db.ForeignKey("upload_history.id"), nullable=True)
 
     def __repr__(self) -> str:
         return f"<RosterStudent {self.email}>"
@@ -162,5 +224,10 @@ class RosterStudent(db.Model):
             "last_name": self.last_name,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
+            "notes": self.notes,
+            "class_name": self.class_name,
+            "last_updated_via": self.last_updated_via,
+            "last_upload_id": self.last_upload_id,
         }
 

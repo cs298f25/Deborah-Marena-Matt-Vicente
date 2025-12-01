@@ -414,24 +414,31 @@ class ReportService:
         correct = sum(1 for r in responses if r.is_correct)
         class_avg_accuracy = (correct / len(responses) * 100) if responses else 0
 
+        # Calculate students_completed separately to avoid join multiplication
+        students_completed_subquery = (
+            db.select(
+                StudentProgress.topic,
+                func.count(func.distinct(StudentProgress.user_id)).label("completed_count"),
+            )
+            .filter(
+                and_(
+                    StudentProgress.subtopics_completed >= StudentProgress.total_subtopics,
+                    StudentProgress.total_subtopics > 0,
+                )
+            )
+            .group_by(StudentProgress.topic)
+            .subquery()
+        )
+
         topics_overview = (
             db.session.execute(
                 db.select(
                     Topic.id,
                     Topic.name,
                     func.count(func.distinct(StudentProgress.user_id)).label("students_started"),
-                    func.sum(
-                        case(
-                            (
-                                and_(
-                                    StudentProgress.subtopics_completed >= StudentProgress.total_subtopics,
-                                    StudentProgress.total_subtopics > 0,
-                                ),
-                                1,
-                            ),
-                            else_=0,
-                        )
-                    ).label("students_completed"),
+                    func.coalesce(students_completed_subquery.c.completed_count, 0).label(
+                        "students_completed"
+                    ),
                     func.avg(
                         case((StudentResponse.is_correct.is_(True), 100.0), else_=0.0)
                     ).label("avg_accuracy"),
@@ -439,8 +446,17 @@ class ReportService:
                 )
                 .outerjoin(StudentProgress, Topic.id == StudentProgress.topic)
                 .outerjoin(StudentResponse, Topic.id == StudentResponse.topic)
+                .outerjoin(
+                    students_completed_subquery,
+                    Topic.id == students_completed_subquery.c.topic,
+                )
                 .filter(Topic.is_visible.is_(True))
-                .group_by(Topic.id, Topic.name, Topic.order_index)
+                .group_by(
+                    Topic.id,
+                    Topic.name,
+                    Topic.order_index,
+                    students_completed_subquery.c.completed_count,
+                )
                 .order_by(Topic.order_index)
             )
             .mappings()
