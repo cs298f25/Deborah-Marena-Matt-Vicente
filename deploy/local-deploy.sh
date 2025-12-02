@@ -89,6 +89,29 @@ echo ""
 echo "Step 3: Starting backend server..."
 cd "$PROJECT_ROOT"  # Run from project root, not backend directory
 
+# Check if port 5000 is in use and kill existing backend processes
+if lsof -ti:5000 > /dev/null 2>&1; then
+    echo -e "${YELLOW}Port 5000 is in use. Checking for existing backend processes...${NC}"
+    EXISTING_PIDS=$(lsof -ti:5000)
+    for PID in $EXISTING_PIDS; do
+        if ps -p $PID -o comm= | grep -q "Python\|python"; then
+            echo "Stopping existing backend process (PID: $PID)..."
+            kill $PID 2>/dev/null || true
+            sleep 1
+            # Force kill if still running
+            if ps -p $PID > /dev/null 2>&1; then
+                kill -9 $PID 2>/dev/null || true
+            fi
+        fi
+    done
+    sleep 1
+    # Check again - if still in use, might be AirPlay or another service
+    if lsof -ti:5000 > /dev/null 2>&1; then
+        echo -e "${YELLOW}Warning: Port 5000 may still be in use by another service${NC}"
+        echo "If this fails, try disabling AirPlay Receiver in System Preferences"
+    fi
+fi
+
 # Activate venv (using absolute path)
 source "$BACKEND_DIR/.venv/bin/activate"
 

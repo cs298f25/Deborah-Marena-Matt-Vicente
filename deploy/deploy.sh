@@ -8,7 +8,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/backend"
 FRONTEND_DIR="$PROJECT_ROOT"
-SERVICE_USER="ec2-user"
 BACKEND_PORT=5000
 FRONTEND_PORT=5173
 
@@ -16,34 +15,145 @@ echo "=========================================="
 echo "BytePath EC2 Deployment Script"
 echo "=========================================="
 
+# Check if running on EC2 instance
+IS_EC2=false
+if curl -s --max-time 2 http://169.254.169.254/latest/meta-data/instance-id > /dev/null 2>&1; then
+    IS_EC2=true
+    echo "Detected EC2 instance"
+else
+    echo "WARNING: This script is designed to run on an EC2 instance"
+    echo "You appear to be running this on a local machine"
+    echo ""
+    echo "To deploy on EC2:"
+    echo "  1. SSH into your EC2 instance"
+    echo "  2. Clone the repository"
+    echo "  3. Run: sudo bash deploy/deploy.sh"
+    echo ""
+    read -p "Continue anyway? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
 # Check if running as root (needed for systemd)
 if [ "$EUID" -ne 0 ]; then 
     echo "Please run as root (use sudo)"
     exit 1
 fi
 
+# Verify project structure exists
+if [ ! -d "$BACKEND_DIR" ] || [ ! -f "$BACKEND_DIR/requirements.txt" ]; then
+    echo "ERROR: Backend directory not found or incomplete"
+    echo "Please ensure you've cloned the repository and are running from the project root"
+    echo "Expected structure:"
+    echo "  $PROJECT_ROOT/backend/requirements.txt"
+    echo "  $PROJECT_ROOT/package.json"
+    exit 1
+fi
+
+if [ ! -f "$FRONTEND_DIR/package.json" ]; then
+    echo "ERROR: Frontend directory not found or incomplete"
+    echo "Please ensure you've cloned the repository and are running from the project root"
+    exit 1
+fi
+
+# Auto-detect service user (ec2-user for Amazon Linux, ubuntu for Ubuntu, etc.)
+if id "ec2-user" &>/dev/null; then
+    SERVICE_USER="ec2-user"
+elif id "ubuntu" &>/dev/null; then
+    SERVICE_USER="ubuntu"
+else
+    # Fallback to the user who ran sudo
+    SERVICE_USER="${SUDO_USER:-$(whoami)}"
+    echo "Warning: Could not detect standard service user, using: $SERVICE_USER"
+fi
+echo "Using service user: $SERVICE_USER"
+
+# Auto-detect EC2 public IP (allow override via environment variable)
+if [ -z "$EC2_PUBLIC_IP" ]; then
+    echo "Detecting EC2 public IP address..."
+    
+    if [ "$IS_EC2" = true ]; then
+        # On EC2: Use metadata service first (most reliable)
+        EC2_IP=$(curl -s --max-time 2 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+        
+        if [ -z "$EC2_IP" ]; then
+            echo "WARNING: Could not get IP from EC2 metadata service"
+            echo "Trying alternative methods..."
+            EC2_IP=$(curl -s https://api.ipify.org 2>/dev/null || \
+                     curl -s https://checkip.amazonaws.com 2>/dev/null || \
+                     echo "")
+        fi
+    else
+        # Not on EC2: Use public IP services (but warn user)
+        echo "WARNING: Not running on EC2 - detected IP may be your local machine's IP"
+        EC2_IP=$(curl -s https://api.ipify.org 2>/dev/null || \
+                 curl -s https://checkip.amazonaws.com 2>/dev/null || \
+                 echo "")
+        
+        if [ -n "$EC2_IP" ]; then
+            echo "Detected public IP: $EC2_IP"
+            echo ""
+            read -p "Is this your EC2 instance IP? If not, enter it now (or press Enter to use detected): " MANUAL_IP
+            if [ -n "$MANUAL_IP" ]; then
+                EC2_IP="$MANUAL_IP"
+            fi
+        fi
+    fi
+    
+    if [ -z "$EC2_IP" ]; then
+        echo "ERROR: Could not detect EC2 public IP address"
+        echo "Please set EC2_PUBLIC_IP environment variable:"
+        echo "  export EC2_PUBLIC_IP=98.93.32.27"
+        echo "  sudo -E bash deploy/deploy.sh"
+        exit 1
+    fi
+else
+    EC2_IP="$EC2_PUBLIC_IP"
+    echo "Using provided EC2 IP: $EC2_IP"
+fi
+echo "Using EC2 public IP: $EC2_IP"
+
 # Step 1: Install system dependencies
 echo ""
 echo "Step 1: Installing system dependencies..."
-yum update -y
 
-# Detect Amazon Linux version and install appropriate Python
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    if [[ "$VERSION_ID" == "2023"* ]]; then
-        echo "Detected Amazon Linux 2023 - Installing Python 3.11..."
-        yum install -y python3.11 python3.11-pip python3.11-devel nodejs npm git gcc
-        PYTHON_CMD="python3.11"
-        PIP_CMD="pip3.11"
+# Check if yum exists (Amazon Linux/RHEL)
+if command -v yum &> /dev/null; then
+    yum update -y
+    
+    # Detect Amazon Linux version and install appropriate Python
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        if [[ "$VERSION_ID" == "2023"* ]]; then
+            echo "Detected Amazon Linux 2023 - Installing Python 3.11..."
+            yum install -y python3.11 python3.11-pip python3.11-devel nodejs npm git gcc
+            PYTHON_CMD="python3.11"
+            PIP_CMD="pip3.11"
+        else
+            echo "Detected Amazon Linux 2 - Installing Python 3.11 from Amazon Linux Extras..."
+            amazon-linux-extras install python3.11 -y || yum install -y python3.11 python3.11-pip python3.11-devel
+            PYTHON_CMD="python3.11"
+            PIP_CMD="pip3.11"
+        fi
     else
-        echo "Detected Amazon Linux 2 - Installing Python 3.11 from Amazon Linux Extras..."
-        amazon-linux-extras install python3.11 -y || yum install -y python3.11 python3.11-pip python3.11-devel
-        PYTHON_CMD="python3.11"
-        PIP_CMD="pip3.11"
+        echo "Warning: Could not detect OS version, trying default python3.11..."
+        yum install -y python3.11 python3.11-pip python3.11-devel nodejs npm git gcc || yum install -y python3 python3-pip nodejs npm git gcc
+        if command -v python3.11 &> /dev/null; then
+            PYTHON_CMD="python3.11"
+            PIP_CMD="pip3.11"
+        else
+            PYTHON_CMD="python3"
+            PIP_CMD="pip3"
+        fi
     fi
-else
-    echo "Warning: Could not detect OS version, trying default python3.11..."
-    yum install -y python3.11 python3.11-pip python3.11-devel nodejs npm git gcc || yum install -y python3 python3-pip nodejs npm git gcc
+elif command -v apt-get &> /dev/null; then
+    # Ubuntu/Debian
+    echo "Detected Ubuntu/Debian - Installing dependencies..."
+    apt-get update -y
+    apt-get install -y python3.11 python3.11-venv python3.11-dev nodejs npm git build-essential || \
+    apt-get install -y python3 python3-venv python3-dev nodejs npm git build-essential
     if command -v python3.11 &> /dev/null; then
         PYTHON_CMD="python3.11"
         PIP_CMD="pip3.11"
@@ -51,6 +161,11 @@ else
         PYTHON_CMD="python3"
         PIP_CMD="pip3"
     fi
+else
+    echo "ERROR: This script requires Amazon Linux, RHEL, or Ubuntu"
+    echo "Detected system does not have yum or apt-get"
+    echo "Please run this script on an EC2 instance with Amazon Linux or Ubuntu"
+    exit 1
 fi
 
 # Verify Python version (must be 3.10+)
@@ -86,6 +201,32 @@ mkdir -p "$BACKEND_DIR"
 touch "$BACKEND_DIR/bytepath.db"
 chown -R $SERVICE_USER:$SERVICE_USER "$BACKEND_DIR"
 
+# Initialize database if it doesn't exist or is empty
+if [ ! -s "$BACKEND_DIR/bytepath.db" ]; then
+    echo "Initializing database..."
+    cd "$PROJECT_ROOT"
+    export PYTHONPATH="$PROJECT_ROOT"
+    source "$BACKEND_DIR/.venv/bin/activate"
+    python3 -m backend.init_db || echo "Warning: Database initialization may have failed"
+    
+    # Run add_columns script to ensure schema is up to date
+    if [ -f "$PROJECT_ROOT/backend/add_columns.py" ]; then
+        echo "Updating database schema..."
+        python3 -m backend.add_columns || echo "Warning: Schema update may have failed"
+    fi
+    chown $SERVICE_USER:$SERVICE_USER "$BACKEND_DIR/bytepath.db"
+else
+    echo "Database already exists, skipping initialization..."
+    # Still run add_columns to ensure schema is up to date
+    if [ -f "$PROJECT_ROOT/backend/add_columns.py" ]; then
+        echo "Checking database schema..."
+        cd "$PROJECT_ROOT"
+        export PYTHONPATH="$PROJECT_ROOT"
+        source "$BACKEND_DIR/.venv/bin/activate"
+        python3 -m backend.add_columns || echo "Warning: Schema update may have failed"
+    fi
+fi
+
 # Step 3: Setup frontend
 echo ""
 echo "Step 3: Setting up frontend..."
@@ -105,8 +246,7 @@ fi
 
 # Build frontend
 echo "Building frontend..."
-# Use EC2 public IP for API base URL
-EC2_IP="18.232.125.59"
+# Use detected EC2 public IP for API base URL
 export VITE_API_BASE="http://$EC2_IP:$BACKEND_PORT/api"
 echo "Setting VITE_API_BASE to http://$EC2_IP:$BACKEND_PORT/api"
 npm run build
@@ -125,7 +265,7 @@ if [ ! -f "$ENV_FILE" ]; then
 # BytePath Production Environment Variables
 FLASK_ENV=production
 BYTEPATH_SECRET_KEY=$(openssl rand -hex 32)
-CORS_ORIGINS=http://localhost:5173,http://18.232.125.59:5173
+CORS_ORIGINS=http://localhost:5173,http://$EC2_IP:5173,http://$EC2_IP:$FRONTEND_PORT
 EOF
     chown $SERVICE_USER:$SERVICE_USER "$ENV_FILE"
     chmod 600 "$ENV_FILE"
@@ -174,7 +314,21 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-# Frontend service
+# Frontend service - find serve binary
+SERVE_BIN=$(which serve 2>/dev/null || echo "/usr/bin/serve")
+if [ ! -f "$SERVE_BIN" ]; then
+    # Try common locations
+    if [ -f "/usr/local/bin/serve" ]; then
+        SERVE_BIN="/usr/local/bin/serve"
+    elif [ -f "$HOME/.npm-global/bin/serve" ]; then
+        SERVE_BIN="$HOME/.npm-global/bin/serve"
+    else
+        echo "ERROR: Could not find 'serve' binary. Please install it with: npm install -g serve"
+        exit 1
+    fi
+fi
+echo "Using serve binary: $SERVE_BIN"
+
 cat > /etc/systemd/system/bytepath-frontend.service << EOF
 [Unit]
 Description=BytePath Frontend (Static Server)
@@ -185,7 +339,7 @@ Type=simple
 User=$SERVICE_USER
 Group=$SERVICE_USER
 WorkingDirectory=$FRONTEND_SERVE_DIR
-ExecStart=/usr/bin/serve -s . -l $FRONTEND_PORT
+ExecStart=$SERVE_BIN -s . -l $FRONTEND_PORT
 Restart=always
 RestartSec=10
 
@@ -218,8 +372,43 @@ echo "Step 8: Enabling and starting services..."
 systemctl daemon-reload
 systemctl enable bytepath-backend
 systemctl enable bytepath-frontend
-systemctl start bytepath-backend
-systemctl start bytepath-frontend
+
+# Stop services if they're already running
+systemctl stop bytepath-backend bytepath-frontend 2>/dev/null || true
+sleep 2
+
+# Start services
+echo "Starting backend service..."
+if systemctl start bytepath-backend; then
+    echo "Backend service started"
+else
+    echo "ERROR: Failed to start backend service"
+    echo "Check logs with: sudo journalctl -u bytepath-backend -n 50"
+    exit 1
+fi
+
+echo "Starting frontend service..."
+if systemctl start bytepath-frontend; then
+    echo "Frontend service started"
+else
+    echo "ERROR: Failed to start frontend service"
+    echo "Check logs with: sudo journalctl -u bytepath-frontend -n 50"
+    exit 1
+fi
+
+# Wait a moment for services to fully start
+sleep 3
+
+# Check service status
+if ! systemctl is-active --quiet bytepath-backend; then
+    echo "WARNING: Backend service is not running"
+    echo "Check logs: sudo journalctl -u bytepath-backend -n 50"
+fi
+
+if ! systemctl is-active --quiet bytepath-frontend; then
+    echo "WARNING: Frontend service is not running"
+    echo "Check logs: sudo journalctl -u bytepath-frontend -n 50"
+fi
 
 # Step 9: Show status
 echo ""
@@ -233,8 +422,8 @@ echo ""
 systemctl status bytepath-frontend --no-pager -l || true
 echo ""
 echo "Services are running on:"
-echo "  Backend:  http://18.232.125.59:$BACKEND_PORT"
-echo "  Frontend: http://18.232.125.59:$FRONTEND_PORT"
+echo "  Backend:  http://$EC2_IP:$BACKEND_PORT"
+echo "  Frontend: http://$EC2_IP:$FRONTEND_PORT"
 echo ""
 echo "Useful commands:"
 echo "  Check backend logs:  sudo journalctl -u bytepath-backend -f"

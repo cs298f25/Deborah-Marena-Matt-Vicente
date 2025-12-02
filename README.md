@@ -33,25 +33,30 @@
 
 ## EC2 Deployment
 
-1. **SSH into EC2 and clone:**
-   ```bash
-   ssh -i ~/.ssh/labsuser.pem ec2-user@publicIP
-   sudo yum install -y git
-   cd ~
-   git clone https://github.com/cs298f25/Deborah-Marena-Matt-Vicente.git
-   cd Deborah-Marena-Matt-Vicente
-   ```
+**Quick Start:**
+```bash
+# 1. SSH into your EC2 instance
+ssh -i your-key.pem ec2-user@YOUR_EC2_IP
 
-2. **Deploy:**
-   ```bash
-   sudo bash deploy/deploy.sh
-   ```
+# 2. Clone and deploy (one command)
+cd ~ && git clone https://github.com/cs298f25/Deborah-Marena-Matt-Vicente.git && cd Deborah-Marena-Matt-Vicente && sudo bash deploy/deploy.sh
+```
 
-3. **Access:**
-   - Frontend: `http://<EC2-IP>:5173`
-   - Backend: `http://<EC2-IP>:5000`
+**That's it!** The script automatically:
+- ✅ Detects your EC2 IP address
+- ✅ Configures everything for your instance
+- ✅ Sets up and starts all services
 
-**Note:** Ensure EC2 security group allows ports 5000 and 5173.
+**Access your application:**
+- Frontend: `http://YOUR_EC2_IP:5173`
+- Backend: `http://YOUR_EC2_IP:5000`
+
+**Important:** 
+- Each team member will have a different EC2 IP
+- The script auto-detects your IP - no manual configuration needed!
+- Ensure your EC2 security group allows ports 5000 and 5173
+
+**For detailed instructions, see:** [`deploy/TEAM_DEPLOYMENT.md`](deploy/TEAM_DEPLOYMENT.md)
 
 **Service Management:**
 ```bash
