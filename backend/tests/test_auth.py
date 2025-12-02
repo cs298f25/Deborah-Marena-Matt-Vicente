@@ -17,7 +17,7 @@ def test_login_existing_user(client):
     assert response.status_code == 200
 
     data = response.get_json()
-    assert data["user"]["name"] == "Test Student 1"
+    assert data["user"]["name"] == "Test Student1"  # Expected format from test data
     assert data["user"]["role"] == "student"
 
 

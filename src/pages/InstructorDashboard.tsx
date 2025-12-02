@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import Button from '../components/ui/Button';
 import { reportsService, type ClassOverview, type StudentReport } from '../services/reports';
 import './InstructorDashboard.css';
 
@@ -104,9 +105,9 @@ export default function InstructorDashboard() {
 
     return (
       <div className="instructor-dashboard">
-        <button onClick={() => setSelectedStudent(null)} className="back-button">
+        <Button onClick={() => setSelectedStudent(null)} className="back-button" variant="ghost">
           Back to Class Overview
-        </button>
+        </Button>
 
         <div className="student-detail-header">
           <div>
@@ -244,9 +245,9 @@ export default function InstructorDashboard() {
                 <p className="roster-modal__label">Class Roster</p>
                 <h2>{rosteredStudents.length} Students</h2>
               </div>
-              <button className="roster-modal__close" onClick={() => setShowRoster(false)}>
+              <Button className="roster-modal__close" variant="muted" size="small" onClick={() => setShowRoster(false)}>
                 Close
-              </button>
+              </Button>
             </div>
 
             <div className="roster-list">

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { studentsService, type Student, type UploadHistory } from "../services/students";
+import Button from "../components/ui/Button";
 import "./StudentsPage.css";
 
 type EditingState = {
@@ -133,9 +134,9 @@ export default function StudentsPage() {
   if (selectedUpload) {
     return (
       <div className="students-page">
-        <button onClick={() => setSelectedUpload(null)} className="back-button">
+        <Button onClick={() => setSelectedUpload(null)} className="back-button" variant="ghost">
           ← Back to History
-        </button>
+        </Button>
         <div className="upload-details">
           <h2>Upload Details: {selectedUpload.filename}</h2>
           <div className="upload-meta">
@@ -171,9 +172,9 @@ export default function StudentsPage() {
     return (
       <div className="students-page">
         <div className="students-header">
-          <button onClick={() => setShowHistory(false)} className="back-button">
+          <Button onClick={() => setShowHistory(false)} className="back-button" variant="ghost">
             ← Back to Students
-          </button>
+          </Button>
           <h2>Upload History</h2>
         </div>
         <div className="history-list">
@@ -254,7 +255,7 @@ export default function StudentsPage() {
           </label>
           <button
             onClick={downloadTemplate}
-            className="upload-button upload-button-template"
+            className="upload-button upload-button-add"
             type="button"
           >
             📄 Template

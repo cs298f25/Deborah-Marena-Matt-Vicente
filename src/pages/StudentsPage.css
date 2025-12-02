@@ -16,21 +16,8 @@
   margin: 0;
 }
 
-.history-button,
 .back-button {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.2s;
-}
-
-.history-button:hover,
-.back-button:hover {
-  background: rgba(255, 255, 255, 0.15);
+  margin-right: 0.5rem;
 }
 
 .students-description {
@@ -130,16 +117,6 @@
 
 .upload-button-drop:hover {
   background: rgba(244, 67, 54, 0.3);
-}
-
-.upload-button-template {
-  background: rgba(76, 175, 80, 0.2);
-  border-color: rgba(76, 175, 80, 0.4);
-  font-weight: 600;
-}
-
-.upload-button-template:hover {
-  background: rgba(76, 175, 80, 0.3);
 }
 
 .upload-status {

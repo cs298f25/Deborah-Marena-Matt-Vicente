@@ -451,18 +451,7 @@
 }
 
 .back-button {
-  background: var(--bg-dashboard-card);
-  border: 1px solid var(--border-dashboard-card);
-  color: var(--text-dashboard);
-  padding: 0.75rem 1.4rem;
-  border-radius: 8px;
-  cursor: pointer;
   margin-bottom: 1.5rem;
-  transition: background 0.2s;
-}
-
-.back-button:hover {
-  background: var(--bg-dashboard-card-hover);
 }
 
 .student-detail-header {

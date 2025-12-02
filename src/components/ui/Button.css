@@ -1,0 +1,52 @@
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-card);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s, border-color 0.2s;
+}
+
+.ui-btn:hover {
+  background: var(--bg-card-hover, rgba(255, 255, 255, 0.95));
+  transform: translateY(-1px);
+}
+
+.ui-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ui-btn--primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.ui-btn--primary:hover {
+  background: var(--color-primary-light, var(--color-primary));
+}
+
+.ui-btn--ghost {
+  background: transparent;
+  border-color: var(--border-card);
+}
+
+.ui-btn--muted {
+  background: var(--bg-dashboard-card, var(--bg-card));
+  border-color: var(--border-dashboard-card, var(--border-card));
+  color: var(--text-dashboard, var(--text-primary));
+}
+
+.ui-btn--small {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.9rem;
+}

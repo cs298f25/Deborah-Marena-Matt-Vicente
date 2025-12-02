@@ -1,7 +1,14 @@
 import pytest
 
 from backend.app import create_app
-from backend.models import db, StudentProgress, StudentResponse, Topic, User
+from backend.models import (
+    RosterStudent,
+    db,
+    StudentProgress,
+    StudentResponse,
+    Topic,
+    User,
+)
 
 
 @pytest.fixture
@@ -80,6 +87,21 @@ def seed_test_data():
     db.session.add_all([instructor, student1, student2])
     db.session.flush()
 
+    # Mirror students into roster so analytics include them
+    roster_entries = [
+        RosterStudent(
+            email=student1.email,
+            first_name="Test",
+            last_name="Student1",
+        ),
+        RosterStudent(
+            email=student2.email,
+            first_name="Test",
+            last_name="Student2",
+        ),
+    ]
+    db.session.add_all(roster_entries)
+
     topic1 = Topic(
         id="test-topic-1",
         name="Test Topic 1",
@@ -117,4 +139,3 @@ def seed_test_data():
     )
     db.session.add(progress1)
     db.session.commit()
-
