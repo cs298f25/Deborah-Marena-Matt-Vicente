@@ -17,7 +17,6 @@ export default function StudentsPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadAction, setUploadAction] = useState<'add' | 'drop' | null>(null);
   const [errors, setErrors] = useState<Array<{ line: number; email?: string; reason: string }>>([]);
   const [uploadSummary, setUploadSummary] = useState<any>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -52,16 +51,13 @@ export default function StudentsPage() {
     await load();
   };
 
-  const handleFile = async (file: File | null, action: 'add' | 'drop') => {
+  const handleFile = async (file: File | null) => {
     if (!file) return;
     setUploading(true);
-    setUploadAction(action);
     setUploadSummary(null);
     setErrors([]);
     try {
-      const res = action === 'add'
-        ? await studentsService.addFromCsv(file)
-        : await studentsService.dropFromCsv(file);
+      const res = await studentsService.addFromCsv(file);
       setUploadSummary(res.summary);
       setErrors(res.errors);
       await load();
@@ -70,7 +66,6 @@ export default function StudentsPage() {
       alert(String(e));
     } finally {
       setUploading(false);
-      setUploadAction(null);
     }
   };
 
@@ -126,6 +121,14 @@ export default function StudentsPage() {
   };
 
   const pageSizes = useMemo(() => [10, 20, 50, 100], []);
+
+  const downloadTemplate = async () => {
+    try {
+      await studentsService.downloadTemplate();
+    } catch (error) {
+      alert(`Failed to download template: ${error}`);
+    }
+  };
 
   if (selectedUpload) {
     return (
@@ -243,28 +246,16 @@ export default function StudentsPage() {
               accept=".csv,text/csv"
               onChange={e => {
                 const file = e.target.files?.[0];
-                if (file) handleFile(file, 'add');
-                e.target.value = '';
-              }}
-              disabled={uploading}
-            />
-          </label>
-          <label className="upload-button upload-button-drop">
-            <span>📤 Drop Students</span>
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              onChange={e => {
-                const file = e.target.files?.[0];
-                if (file) handleFile(file, 'drop');
+                if (file) handleFile(file);
                 e.target.value = '';
               }}
               disabled={uploading}
             />
           </label>
           <button
-            onClick={studentsService.downloadTemplate}
-            className="template-button"
+            onClick={downloadTemplate}
+            className="upload-button upload-button-template"
+            type="button"
           >
             📄 Template
           </button>
@@ -273,25 +264,18 @@ export default function StudentsPage() {
 
       {uploading && (
         <div className="upload-status">
-          {uploadAction === 'add' ? 'Adding students...' : 'Dropping students...'}
+          Adding students...
         </div>
       )}
 
       {uploadSummary && (
         <div className="upload-summary">
           <strong>Upload Summary:</strong>{" "}
-          {uploadAction === 'add' ? (
-            <>
-              {uploadSummary.added > 0 && <span>+{uploadSummary.added} added</span>}
-              {uploadSummary.restored > 0 && <span>, {uploadSummary.restored} restored</span>}
-              {uploadSummary.skipped > 0 && <span>, {uploadSummary.skipped} skipped</span>}
-            </>
-          ) : (
-            <>
-              {uploadSummary.removed > 0 && <span>-{uploadSummary.removed} removed</span>}
-              {uploadSummary.not_found > 0 && <span>, {uploadSummary.not_found} not found</span>}
-            </>
-          )}
+          <>
+            {uploadSummary.added > 0 && <span>+{uploadSummary.added} added</span>}
+            {uploadSummary.restored > 0 && <span>, {uploadSummary.restored} restored</span>}
+            {uploadSummary.skipped > 0 && <span>, {uploadSummary.skipped} skipped</span>}
+          </>
           {" "}(processed {uploadSummary.total_processed})
         </div>
       )}
@@ -512,4 +496,3 @@ export default function StudentsPage() {
     </div>
   );
 }
-

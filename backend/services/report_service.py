@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 
 from sqlalchemy import case, func, and_, desc
 
-from backend.models import StudentProgress, StudentResponse, Topic, User, db
+from backend.models import RosterStudent, StudentProgress, StudentResponse, Topic, User, db
 
 
 class ReportService:
@@ -15,6 +15,21 @@ class ReportService:
     def get_student_report(student_id: int) -> Optional[Dict]:
         user = db.session.get(User, student_id)
         if not user:
+            return None
+
+        roster_entry = (
+            db.session.execute(
+                db.select(RosterStudent).filter(
+                    func.lower(RosterStudent.email) == func.lower(user.email),
+                    RosterStudent.deleted_at.is_(None),
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+        # Hide analytics for users who are not on the roster
+        if roster_entry is None:
             return None
 
         responses: List[StudentResponse] = (
@@ -225,9 +240,23 @@ class ReportService:
         if not topic:
             return None
 
+        rostered_students_subquery = (
+            db.select(User.id)
+            .select_from(User)
+            .join(
+                RosterStudent,
+                func.lower(RosterStudent.email) == func.lower(User.email),
+            )
+            .filter(User.role == "student", RosterStudent.deleted_at.is_(None))
+            .subquery()
+        )
+
         responses: List[StudentResponse] = (
             db.session.execute(
-                db.select(StudentResponse).filter_by(topic=topic_id)
+                db.select(StudentResponse).filter(
+                    StudentResponse.topic == topic_id,
+                    StudentResponse.user_id.in_(rostered_students_subquery),
+                )
             )
             .scalars()
             .all()
@@ -249,22 +278,30 @@ class ReportService:
                 "most_missed_questions": [],
             }
 
-        total_students = db.session.execute(
-            db.select(func.count(User.id)).filter_by(role="student")
-        ).scalar_one()
+        total_students = (
+            db.session.execute(
+                db.select(func.count()).select_from(rostered_students_subquery)
+            ).scalar_one()
+        )
 
         students_started = db.session.execute(
-            db.select(func.count(func.distinct(StudentResponse.user_id))).filter(
-                StudentResponse.topic == topic_id
+            db.select(func.count(func.distinct(StudentResponse.user_id)))
+            .select_from(StudentResponse)
+            .filter(
+                StudentResponse.topic == topic_id,
+                StudentResponse.user_id.in_(rostered_students_subquery),
             )
         ).scalar_one()
 
         students_completed = db.session.execute(
-            db.select(func.count(StudentProgress.id)).filter(
+            db.select(func.count(StudentProgress.id))
+            .select_from(StudentProgress)
+            .filter(
                 and_(
                     StudentProgress.topic == topic_id,
                     StudentProgress.total_subtopics > 0,
                     StudentProgress.subtopics_completed >= StudentProgress.total_subtopics,
+                    StudentProgress.user_id.in_(rostered_students_subquery),
                 )
             )
         ).scalar_one()
@@ -294,6 +331,7 @@ class ReportService:
                     and_(
                         StudentResponse.topic == topic_id,
                         StudentResponse.status != "skipped",
+                        StudentResponse.user_id.in_(rostered_students_subquery),
                     )
                 )
                 .group_by(StudentResponse.subtopic_type)
@@ -344,6 +382,7 @@ class ReportService:
                     and_(
                         StudentResponse.topic == topic_id,
                         StudentResponse.status != "skipped",
+                        StudentResponse.user_id.in_(rostered_students_subquery),
                     )
                 )
                 .group_by(StudentResponse.question_code, StudentResponse.subtopic_type)
@@ -388,25 +427,69 @@ class ReportService:
 
     @staticmethod
     def get_class_overview() -> Dict:
-        total_students = db.session.execute(
-            db.select(func.count(User.id)).filter_by(role="student")
-        ).scalar_one()
+        rostered_students_subquery = (
+            db.select(User.id)
+            .select_from(User)
+            .join(
+                RosterStudent,
+                func.lower(RosterStudent.email) == func.lower(User.email),
+            )
+            .filter(User.role == "student", RosterStudent.deleted_at.is_(None))
+            .subquery()
+        )
+
+        roster_entries = (
+            db.session.execute(
+                db.select(
+                    RosterStudent.id.label("roster_id"),
+                    RosterStudent.first_name,
+                    RosterStudent.last_name,
+                    RosterStudent.email,
+                    User.id.label("user_id"),
+                    User.name.label("user_name"),
+                )
+                .select_from(RosterStudent)
+                .join(
+                    User,
+                    func.lower(User.email) == func.lower(RosterStudent.email),
+                    isouter=True,
+                )
+                .filter(RosterStudent.deleted_at.is_(None))
+                .order_by(RosterStudent.last_name, RosterStudent.first_name)
+            )
+            .mappings()
+            .all()
+        )
+
+        total_students = len(roster_entries)
 
         one_week_ago = datetime.utcnow() - timedelta(days=7)
 
         active_last_week = db.session.execute(
-            db.select(func.count(func.distinct(StudentResponse.user_id))).filter(
-                StudentResponse.attempted_at >= one_week_ago
+            db.select(func.count(func.distinct(StudentResponse.user_id)))
+            .select_from(StudentResponse)
+            .filter(
+                StudentResponse.user_id.in_(rostered_students_subquery),
+                StudentResponse.attempted_at >= one_week_ago,
             )
         ).scalar_one()
 
         total_questions = db.session.execute(
             db.select(func.count(StudentResponse.id))
+            .select_from(StudentResponse)
+            .filter(
+                StudentResponse.user_id.in_(rostered_students_subquery)
+            )
         ).scalar_one()
 
         responses = (
             db.session.execute(
-                db.select(StudentResponse).filter(StudentResponse.status != "skipped")
+                db.select(StudentResponse)
+                .select_from(StudentResponse)
+                .filter(
+                    StudentResponse.status != "skipped",
+                    StudentResponse.user_id.in_(rostered_students_subquery),
+                )
             )
             .scalars()
             .all()
@@ -414,78 +497,95 @@ class ReportService:
         correct = sum(1 for r in responses if r.is_correct)
         class_avg_accuracy = (correct / len(responses) * 100) if responses else 0
 
-        # Calculate students_completed separately to avoid join multiplication
-        students_completed_subquery = (
-            db.select(
-                StudentProgress.topic,
-                func.count(func.distinct(StudentProgress.user_id)).label("completed_count"),
-            )
-            .filter(
-                and_(
-                    StudentProgress.subtopics_completed >= StudentProgress.total_subtopics,
-                    StudentProgress.total_subtopics > 0,
-                )
-            )
-            .group_by(StudentProgress.topic)
-            .subquery()
-        )
-
-        topics_overview = (
+        # Get started counts by topic
+        started_counts = (
             db.session.execute(
                 db.select(
                     Topic.id,
                     Topic.name,
-                    func.count(func.distinct(StudentProgress.user_id)).label("students_started"),
-                    func.coalesce(students_completed_subquery.c.completed_count, 0).label(
-                        "students_completed"
-                    ),
-                    func.avg(
-                        case((StudentResponse.is_correct.is_(True), 100.0), else_=0.0)
-                    ).label("avg_accuracy"),
-                    func.avg(StudentResponse.time_spent).label("avg_time"),
-                )
-                .outerjoin(StudentProgress, Topic.id == StudentProgress.topic)
-                .outerjoin(StudentResponse, Topic.id == StudentResponse.topic)
-                .outerjoin(
-                    students_completed_subquery,
-                    Topic.id == students_completed_subquery.c.topic,
-                )
-                .filter(Topic.is_visible.is_(True))
-                .group_by(
-                    Topic.id,
-                    Topic.name,
                     Topic.order_index,
-                    students_completed_subquery.c.completed_count,
+                    func.count(func.distinct(StudentProgress.user_id)).label("students_started"),
                 )
-                .order_by(Topic.order_index)
+                .select_from(Topic)
+                .join(
+                    StudentProgress,
+                    and_(
+                        Topic.id == StudentProgress.topic,
+                        StudentProgress.user_id.in_(rostered_students_subquery)
+                    )
+                )
+                .group_by(Topic.id, Topic.name, Topic.order_index)
             )
             .mappings()
             .all()
         )
 
-        topics_list = []
-        for topic in topics_overview:
-            students_started = topic["students_started"] or 0
-            students_completed = topic["students_completed"] or 0
-            completion_rate = (
-                (students_completed / students_started * 100) if students_started else 0
-            )
+        # Get completed counts by topic
+        completed_counts = dict(
+            db.session.execute(
+                db.select(
+                    StudentProgress.topic,
+                    func.count(func.distinct(StudentProgress.user_id)).label("completed_count")
+                )
+                .filter(
+                    StudentProgress.subtopics_completed >= StudentProgress.total_subtopics,
+                    StudentProgress.total_subtopics > 0,
+                    StudentProgress.user_id.in_(rostered_students_subquery)
+                )
+                .group_by(StudentProgress.topic)
+            ).all()
+        )
 
-            topics_list.append(
-                {
-                    "topic": topic["id"],
-                    "topic_name": topic["name"],
-                    "students_started": students_started,
-                    "students_completed": students_completed,
-                    "completion_rate": round(completion_rate, 2),
-                    "avg_accuracy": round(float(topic["avg_accuracy"]), 2)
-                    if topic["avg_accuracy"]
-                    else 0,
-                    "avg_time_per_question": round(float(topic["avg_time"]), 2)
-                    if topic["avg_time"]
-                    else 0,
-                }
+        # Get accuracy and time stats by topic
+        topic_stats = {}
+        for row in db.session.execute(
+            db.select(
+                StudentResponse.topic,
+                func.avg(case((StudentResponse.is_correct.is_(True), 100.0), else_=0.0)).label("avg_accuracy"),
+                func.avg(StudentResponse.time_spent).label("avg_time")
             )
+            .filter(
+                StudentResponse.status != "skipped",
+                StudentResponse.user_id.in_(rostered_students_subquery)
+            )
+            .group_by(StudentResponse.topic)
+        ):
+            topic_stats[row[0]] = (row[1], row[2])
+
+        # Combine all the data
+        topics_list = []
+        for topic in started_counts:
+            topic_id = topic["id"]
+            students_started = topic["students_started"] or 0
+            students_completed = completed_counts.get(topic_id, 0)
+            completion_rate = (students_completed / students_started * 100) if students_started else 0
+            stats = topic_stats.get(topic_id, (0, 0))
+
+            topics_list.append({
+                "topic": topic_id,
+                "topic_name": topic["name"],
+                "students_started": students_started,
+                "students_completed": students_completed,
+                "completion_rate": round(completion_rate, 2),
+                "avg_accuracy": round(float(stats[0]), 2) if stats[0] is not None else 0,
+                "avg_time_per_question": round(float(stats[1]), 2) if stats[1] is not None else 0,
+            })
+
+        # Sort by topic name
+        topics_list.sort(key=lambda x: x.get("topic_name", ""))
+
+        rostered_student_list = [
+            {
+                "student_id": entry["user_id"],
+                "student_name": (
+                    entry["user_name"]
+                    or f"{entry['first_name']} {entry['last_name']}".strip()
+                    or entry["email"]
+                ),
+                "student_email": entry["email"],
+            }
+            for entry in roster_entries
+        ]
 
         top_performers = (
             db.session.execute(
@@ -501,6 +601,7 @@ class ReportService:
                 .filter(
                     and_(
                         User.role == "student",
+                        User.id.in_(rostered_students_subquery),
                         StudentResponse.status != "skipped",
                     )
                 )
@@ -539,6 +640,7 @@ class ReportService:
                 .filter(
                     and_(
                         User.role == "student",
+                        User.id.in_(rostered_students_subquery),
                         StudentResponse.status != "skipped",
                     )
                 )
@@ -570,7 +672,10 @@ class ReportService:
                     func.count(StudentResponse.id).label("questions_answered"),
                     func.count(func.distinct(StudentResponse.user_id)).label("active_students"),
                 )
-                .filter(StudentResponse.attempted_at >= one_week_ago)
+                .filter(
+                    StudentResponse.user_id.in_(rostered_students_subquery),
+                    StudentResponse.attempted_at >= one_week_ago,
+                )
                 .group_by(func.date(StudentResponse.attempted_at))
                 .order_by(func.date(StudentResponse.attempted_at))
             )
@@ -593,6 +698,7 @@ class ReportService:
             "total_questions_answered": total_questions,
             "class_avg_accuracy": round(class_avg_accuracy, 2),
             "topics_overview": topics_list,
+            "rostered_students": rostered_student_list,
             "top_performers": top_performer_list,
             "struggling_students": struggling_list,
             "recent_activity": recent_activity_list,
@@ -654,4 +760,3 @@ class ReportService:
             )
 
         return {"topic": topic_id, "analytics": analytics}
-

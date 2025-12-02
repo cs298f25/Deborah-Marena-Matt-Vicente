@@ -220,8 +220,21 @@ export const studentsService = {
     return res.json();
   },
 
-  downloadTemplate(): void {
-    window.open(`${API_BASE}/students/template`, '_blank');
+  async downloadTemplate(): Promise<void> {
+    const res = await fetch(`${API_BASE}/students/template`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`Failed to download template (${res.status})`);
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'students_template.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   },
 };
-

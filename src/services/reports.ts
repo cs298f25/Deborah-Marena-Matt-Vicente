@@ -42,6 +42,11 @@ export interface ClassOverview {
     students_completed: number;
     avg_accuracy: number;
   }>;
+  rostered_students?: Array<{
+    student_id: number | null;
+    student_name: string;
+    student_email: string;
+  }>;
   top_performers: Array<{
     student_id: number;
     student_name: string;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { reportsService, type ClassOverview, type StudentReport } from '../services/reports';
 import './InstructorDashboard.css';
 
@@ -25,6 +25,7 @@ export default function InstructorDashboard() {
   const [selectedStudent, setSelectedStudent] = useState<StudentReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showRoster, setShowRoster] = useState(false);
 
   useEffect(() => {
     loadClassOverview();
@@ -57,29 +58,39 @@ export default function InstructorDashboard() {
     createDownload(classOverview, 'class-overview.json');
   };
 
+  const openRosterModal = () => setShowRoster(true);
+  const handleRosterKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openRosterModal();
+    }
+  };
+
   const recentActivity = classOverview?.recent_activity ?? [];
   const maxQuestionsInActivity =
     recentActivity.length > 0
       ? Math.max(...recentActivity.map((day) => day.questions_answered))
       : 0;
 
+  const topPerformers = classOverview?.top_performers ?? [];
+  const strugglingStudents = classOverview?.struggling_students ?? [];
+  const topicsOverview = classOverview?.topics_overview ?? [];
+  const rosteredStudents = classOverview?.rostered_students ?? [];
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
   const filteredTopPerformers = useMemo(() => {
-    if (!classOverview) return [];
-    if (!normalizedSearch) return classOverview.top_performers;
-    return classOverview.top_performers.filter((student) =>
+    if (!normalizedSearch) return topPerformers;
+    return topPerformers.filter((student) =>
       student.student_name.toLowerCase().includes(normalizedSearch),
     );
-  }, [classOverview, normalizedSearch]);
+  }, [topPerformers, normalizedSearch]);
 
   const filteredStrugglers = useMemo(() => {
-    if (!classOverview) return [];
-    if (!normalizedSearch) return classOverview.struggling_students;
-    return classOverview.struggling_students.filter((student) =>
+    if (!normalizedSearch) return strugglingStudents;
+    return strugglingStudents.filter((student) =>
       student.student_name.toLowerCase().includes(normalizedSearch),
     );
-  }, [classOverview, normalizedSearch]);
+  }, [strugglingStudents, normalizedSearch]);
 
   if (loading) {
     return <div className="dashboard-loading">Loading dashboard…</div>;
@@ -219,6 +230,52 @@ export default function InstructorDashboard() {
 
   return (
     <div className="instructor-dashboard">
+      {showRoster && (
+        <div
+          className="roster-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Class roster"
+          onClick={() => setShowRoster(false)}
+        >
+          <div className="roster-modal__content" onClick={(event) => event.stopPropagation()}>
+            <div className="roster-modal__header">
+              <div>
+                <p className="roster-modal__label">Class Roster</p>
+                <h2>{rosteredStudents.length} Students</h2>
+              </div>
+              <button className="roster-modal__close" onClick={() => setShowRoster(false)}>
+                Close
+              </button>
+            </div>
+
+            <div className="roster-list">
+              {rosteredStudents.length === 0 ? (
+                <div className="roster-empty">No students on this roster yet.</div>
+              ) : (
+                rosteredStudents.map((student, index) => (
+                  <div
+                    key={student.student_id ?? student.student_email ?? index}
+                    className="roster-row"
+                  >
+                    <div className="roster-avatar">
+                      {student.student_name?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                    <div className="roster-info">
+                      <div className="roster-name">
+                        <span className="roster-rank">#{index + 1}</span>
+                        <strong>{student.student_name}</strong>
+                      </div>
+                      <div className="roster-email">{student.student_email}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="dashboard-header">
         <div className="dashboard-header__content">
           <h1>Class Analytics</h1>
@@ -235,7 +292,14 @@ export default function InstructorDashboard() {
 
       <section className="dashboard-overview">
         <div className="overview-stats">
-          <div className="stat-card stat-card--large">
+          <div
+            className="stat-card stat-card--large stat-card--clickable"
+            role="button"
+            tabIndex={0}
+            onClick={openRosterModal}
+            onKeyDown={handleRosterKey}
+            aria-label="View class roster"
+          >
             <div className="stat-card__content">
               <p className="stat-card__label">Total Students</p>
               <p className="stat-card__value">{classOverview?.total_students ?? 0}</p>
@@ -261,10 +325,10 @@ export default function InstructorDashboard() {
             <div className="stat-card__content">
               <p className="stat-card__label">Top Performer</p>
               <p className="stat-card__value">
-                {classOverview?.top_performers[0]?.accuracy.toFixed(1) ?? '0.0'}%
+                {topPerformers[0]?.accuracy?.toFixed(1) ?? '0.0'}%
               </p>
               <p className="stat-card__detail">
-                {classOverview?.top_performers[0]?.student_name ?? 'No data'}
+                {topPerformers[0]?.student_name ?? 'No data'}
               </p>
             </div>
           </div>
@@ -301,7 +365,7 @@ export default function InstructorDashboard() {
       <section className="dashboard-section">
         <h2>Topics Performance</h2>
         <div className="topics-performance-grid">
-          {classOverview?.topics_overview
+          {topicsOverview
             .slice()
             .sort((a, b) => a.avg_accuracy - b.avg_accuracy)
             .map((topic) => {
@@ -423,4 +487,3 @@ export default function InstructorDashboard() {
     </div>
   );
 }
-
