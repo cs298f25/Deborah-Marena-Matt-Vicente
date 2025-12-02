@@ -67,6 +67,10 @@ function App() {
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const [theme, setThemeState] = useState<'light' | 'dark'>(getThemePreference());
   const isInstructor = currentUser?.role === 'instructor';
+  const clearUrlHash = () => {
+    const { pathname, search } = window.location;
+    window.history.replaceState(null, '', `${pathname}${search}`);
+  };
 
   // Load Python interpreter
   useEffect(() => {
@@ -168,6 +172,14 @@ function App() {
     }
   }, [isInstructor]);
 
+  // Prevent instructors from landing on student-only screens (welcome/questions).
+  useEffect(() => {
+    if (isInstructor && currentScreen !== 'dashboard' && currentScreen !== 'students') {
+      setCurrentScreen('dashboard');
+      clearUrlHash();
+    }
+  }, [isInstructor, currentScreen]);
+
   const resetState = () => {
     setCurrentScreen('welcome');
     setCurrentTopic(null);
@@ -203,9 +215,9 @@ function App() {
       // Show locked topic screen
       setCurrentTopic(topic);
       setCurrentScreen('locked-topic');
-      window.location.hash = topic.id;
-      return;
-    }
+          window.location.hash = topic.id;
+          return;
+        }
     
     // If we're already on this topic and in question mode, don't restart
     if (currentTopic?.id === topic.id && currentScreen === 'question') {
@@ -361,7 +373,14 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <table onClick={() => { setCurrentScreen('welcome'); window.location.hash = ''; }} style={{ cursor: 'pointer' }}><tbody>
+        <table onClick={() => {
+          if (isInstructor) {
+            setCurrentScreen('dashboard');
+          } else {
+            setCurrentScreen('welcome');
+          }
+          clearUrlHash();
+        }} style={{ cursor: 'pointer' }}><tbody>
           <tr>
             <td rowSpan={2}><img src="https://s3.dualstack.us-east-2.amazonaws.com/pythondotorg-assets/media/files/python-logo-only.svg" alt="Python Logo"/></td>
             <td><h1>Bytepath</h1></td>
