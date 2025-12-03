@@ -80,37 +80,6 @@ The check is designed to prevent unnecessary restarts, but it doesn't account fo
 
 ---
 
-## 🐛 Bug #3: Question Order Appears the Same (Random Selection)
-
-### Problem
-Questions are generated using weighted random selection, which can produce the same order by chance, making it appear like questions aren't randomizing.
-
-### Location
-- **File**: `src/topics.ts`
-- **Lines**: 118-140
-- **Method**: `Topic.getRandomSubtopic()`
-
-### Current Behavior
-```typescript
-// 'random-beginning' mode uses weighted random
-const weights = incompleteSubtopics.map((_, i) => 2 ** (incompleteSubtopics.length - i));
-const rand = Math.random() * sum;
-// ... weighted selection logic
-```
-
-### Impact
-- **User Perception**: Questions may appear in the same order multiple times
-- **Learning Experience**: Less variety in question presentation
-- **Confusion**: Users think the system is broken when it's actually random
-
-### Root Cause
-- No seed or state tracking for question order
-- Each call to `getRandomSubtopic()` is independent
-- Weighted random can produce similar sequences by chance
-- No mechanism to ensure different order on restart
-
----
-
 ## 🐛 Bug #4: Mode Toggle Doesn't Clear Quiz State
 
 ### Problem
@@ -346,4 +315,3 @@ December 1, 2024
 
 ## 🔄 Last Updated
 December 1, 2024
-
