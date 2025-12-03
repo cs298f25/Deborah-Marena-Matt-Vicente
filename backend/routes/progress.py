@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 
 from backend.models import StudentProgress, Topic
 from backend.repositories import topic_repository, user_repository
@@ -9,16 +9,32 @@ from backend.services.progress_service import ProgressService
 progress_bp = Blueprint("progress", __name__, url_prefix="/api/progress")
 
 
+def get_progress_service():
+    return current_app.config.get("PROGRESS_SERVICE", ProgressService)
+
+
+def get_user_repository():
+    return current_app.config.get("USER_REPOSITORY", user_repository)
+
+
+def get_topic_repository():
+    return current_app.config.get("TOPIC_REPOSITORY", topic_repository)
+
+
 @progress_bp.get("/<int:user_id>")
 def get_user_progress(user_id: int):
     """Return progress for all topics for the requested user."""
 
-    user = user_repository.get_by_id(user_id)
+    users = get_user_repository()
+    topics_repo = get_topic_repository()
+
+    user = users.get_by_id(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    progress_records = ProgressService.get_user_progress(user_id)
-    topics = {record.topic: topic_repository.get_by_id(record.topic) for record in progress_records}
+    service = get_progress_service()
+    progress_records = service.get_user_progress(user_id)
+    topics = {record.topic: topics_repo.get_by_id(record.topic) for record in progress_records}
     progress_payload = [
         _serialise_progress(record, topics.get(record.topic)) for record in progress_records
     ]
@@ -39,18 +55,22 @@ def get_user_progress(user_id: int):
 def get_topic_progress(user_id: int, topic_id: str):
     """Return progress for a specific topic for the requested user."""
 
-    if not user_repository.get_by_id(user_id):
+    users = get_user_repository()
+    topics_repo = get_topic_repository()
+
+    if not users.get_by_id(user_id):
         return jsonify({"error": "User not found"}), 404
 
-    topic = topic_repository.get_by_id(topic_id)
+    topic = topics_repo.get_by_id(topic_id)
     if not topic:
-        topic = topic_repository.create_topic(
+        topic = topics_repo.create_topic(
             topic_id=topic_id,
             name=topic_id.replace("-", " ").title(),
             is_visible=True,
         )
 
-    progress = ProgressService.get_topic_progress(user_id, topic_id)
+    service = get_progress_service()
+    progress = service.get_topic_progress(user_id, topic_id)
     if not progress:
         return jsonify({"error": "Progress not found for this user and topic"}), 404
 
@@ -79,18 +99,22 @@ def update_topic_progress(user_id: int, topic_id: str):
     if total_subtopics <= 0:
         return jsonify({"error": "total_subtopics must be greater than 0"}), 400
 
-    if not user_repository.get_by_id(user_id):
+    users = get_user_repository()
+    topics_repo = get_topic_repository()
+
+    if not users.get_by_id(user_id):
         return jsonify({"error": "User not found"}), 404
 
-    topic = topic_repository.get_by_id(topic_id)
+    topic = topics_repo.get_by_id(topic_id)
     if not topic:
-        topic = topic_repository.create_topic(
+        topic = topics_repo.create_topic(
             topic_id=topic_id,
             name=topic_id.replace("-", " ").title(),
             is_visible=True,
         )
 
-    progress, created = ProgressService.update_or_create_progress(
+    service = get_progress_service()
+    progress, created = service.update_or_create_progress(
         user_id,
         topic_id,
         {
@@ -108,17 +132,21 @@ def update_topic_progress(user_id: int, topic_id: str):
 def increment_questions_answered(user_id: int, topic_id: str):
     """Increment the number of questions answered for a topic."""
 
-    if not user_repository.get_by_id(user_id):
+    users = get_user_repository()
+    topics_repo = get_topic_repository()
+
+    if not users.get_by_id(user_id):
         return jsonify({"error": "User not found"}), 404
 
-    if not topic_repository.get_by_id(topic_id):
-        topic_repository.create_topic(
+    if not topics_repo.get_by_id(topic_id):
+        topics_repo.create_topic(
             topic_id=topic_id,
             name=topic_id.replace("-", " ").title(),
             is_visible=True,
         )
 
-    progress = ProgressService.increment_questions_answered(user_id=user_id, topic_id=topic_id)
+    service = get_progress_service()
+    progress = service.increment_questions_answered(user_id=user_id, topic_id=topic_id)
     return jsonify(
         {"message": "Progress incremented", "questions_answered": progress.questions_answered}
     ), 200
@@ -127,8 +155,10 @@ def increment_questions_answered(user_id: int, topic_id: str):
 def _serialise_progress(progress: StudentProgress, topic: Topic | None = None) -> dict:
     """Convert a progress model into an API-friendly dictionary."""
 
+    topics_repo = get_topic_repository()
+
     if topic is None:
-        topic = topic_repository.get_by_id(progress.topic)
+        topic = topics_repo.get_by_id(progress.topic)
 
     total_subtopics = progress.total_subtopics or 0
     subtopics_completed = progress.subtopics_completed or 0

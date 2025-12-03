@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, request, session, current_app
 
 from backend.models import User
 from backend.services.auth_service import AuthService
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
+
+
+def get_auth_service():
+    return current_app.config.get("AUTH_SERVICE", AuthService)
 
 
 @auth_bp.post("/login")
@@ -18,7 +22,8 @@ def login():
     if not email:
         return jsonify({"error": "Email is required"}), 400
 
-    user = AuthService.login_or_create_user(email)
+    service = get_auth_service()
+    user = service.login_or_create_user(email)
     session["user_id"] = user.id
     return jsonify({"user": _serialise_user(user)})
 
@@ -31,7 +36,8 @@ def profile():
     if not user_id:
         return jsonify({"error": "Not authenticated"}), 401
 
-    user = AuthService.get_user_by_id(user_id)
+    service = get_auth_service()
+    user = service.get_user_by_id(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
 
@@ -45,4 +51,3 @@ def _serialise_user(user: User) -> dict:
         "name": user.name,
         "role": user.role,
     }
-

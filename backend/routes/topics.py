@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 
 from backend.models import Topic
 from backend.services.topic_service import TopicService
@@ -10,12 +10,17 @@ from backend.services.topic_service import TopicService
 topics_bp = Blueprint("topics", __name__, url_prefix="/api/topics")
 
 
+def get_topic_service():
+    return current_app.config.get("TOPIC_SERVICE", TopicService)
+
+
 @topics_bp.get("")
 def get_topics():
     """Return topics filtered by the requester's role."""
 
     role = (request.args.get("role") or "student").lower()
-    topics = TopicService.list_topics(role)
+    service = get_topic_service()
+    topics = service.list_topics(role)
     return jsonify({"topics": [_serialise_topic_basic(topic) for topic in topics]}), 200
 
 
@@ -23,7 +28,8 @@ def get_topics():
 def get_topic(topic_id: str):
     """Return metadata for a single topic."""
 
-    topic = TopicService.get_topic(topic_id)
+    service = get_topic_service()
+    topic = service.get_topic(topic_id)
     if not topic:
         return jsonify({"error": "Topic not found"}), 404
     return jsonify(_serialise_topic_detail(topic)), 200
@@ -42,7 +48,8 @@ def update_topic_visibility(topic_id: str):
     if not isinstance(is_visible, bool):
         return jsonify({"error": "is_visible must be a boolean"}), 400
 
-    topic = TopicService.set_visibility(topic_id, is_visible=is_visible)
+    service = get_topic_service()
+    topic = service.set_visibility(topic_id, is_visible=is_visible)
     if not topic:
         return jsonify({"error": "Topic not found"}), 404
 
@@ -70,7 +77,8 @@ def create_topic():
     topic_id = str(payload["id"])
     name = str(payload["name"])
 
-    if TopicService.get_topic(topic_id):
+    service = get_topic_service()
+    if service.get_topic(topic_id):
         return jsonify({"error": "Topic with this ID already exists"}), 409
 
     is_visible = payload.get("is_visible", True)
@@ -84,7 +92,7 @@ def create_topic():
         except (TypeError, ValueError):
             return jsonify({"error": "order_index must be an integer"}), 400
 
-    topic = TopicService.create_topic(
+    topic = service.create_topic(
         topic_id,
         name,
         is_visible=is_visible,
@@ -126,7 +134,8 @@ def update_topic(topic_id: str):
             return jsonify({"error": "is_visible must be a boolean"}), 400
         update_fields["is_visible"] = payload["is_visible"]
 
-    topic = TopicService.update_topic(topic_id, **update_fields)
+    service = get_topic_service()
+    topic = service.update_topic(topic_id, **update_fields)
     if not topic:
         return jsonify({"error": "Topic not found"}), 404
 
@@ -159,4 +168,3 @@ def _serialise_topic_detail(topic: Topic) -> dict:
     created_at: datetime | None = topic.created_at
     data["created_at"] = created_at.isoformat() if created_at else None
     return data
-
