@@ -42,10 +42,10 @@ ssh -i your-key.pem ec2-user@YOUR_EC2_IP
 cd ~ && git clone https://github.com/cs298f25/Deborah-Marena-Matt-Vicente.git && cd Deborah-Marena-Matt-Vicente && sudo bash deploy/deploy.sh
 ```
 
-**That's it!** The script automatically:
-- ✅ Detects your EC2 IP address
-- ✅ Configures everything for your instance
-- ✅ Sets up and starts all services
+**The script automatically:**
+- Detects your EC2 IP address
+- Configures everything for your instance
+- Sets up and starts all services
 
 **Access your application:**
 - Frontend: `http://YOUR_EC2_IP:5173`
@@ -53,7 +53,7 @@ cd ~ && git clone https://github.com/cs298f25/Deborah-Marena-Matt-Vicente.git &&
 
 **Important:** 
 - Each team member will have a different EC2 IP
-- The script auto-detects your IP - no manual configuration needed!
+- The script auto-detects your IP 
 - Ensure your EC2 security group allows ports 5000 and 5173
 
 **For detailed instructions, see:** [`deploy/TEAM_DEPLOYMENT.md`](deploy/TEAM_DEPLOYMENT.md)
