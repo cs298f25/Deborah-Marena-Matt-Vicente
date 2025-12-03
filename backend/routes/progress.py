@@ -44,7 +44,11 @@ def get_topic_progress(user_id: int, topic_id: str):
 
     topic = topic_repository.get_by_id(topic_id)
     if not topic:
-        return jsonify({"error": "Topic not found"}), 404
+        topic = topic_repository.create_topic(
+            topic_id=topic_id,
+            name=topic_id.replace("-", " ").title(),
+            is_visible=True,
+        )
 
     progress = ProgressService.get_topic_progress(user_id, topic_id)
     if not progress:
@@ -80,7 +84,11 @@ def update_topic_progress(user_id: int, topic_id: str):
 
     topic = topic_repository.get_by_id(topic_id)
     if not topic:
-        return jsonify({"error": "Topic not found"}), 404
+        topic = topic_repository.create_topic(
+            topic_id=topic_id,
+            name=topic_id.replace("-", " ").title(),
+            is_visible=True,
+        )
 
     progress, created = ProgressService.update_or_create_progress(
         user_id,
@@ -104,7 +112,11 @@ def increment_questions_answered(user_id: int, topic_id: str):
         return jsonify({"error": "User not found"}), 404
 
     if not topic_repository.get_by_id(topic_id):
-        return jsonify({"error": "Topic not found"}), 404
+        topic_repository.create_topic(
+            topic_id=topic_id,
+            name=topic_id.replace("-", " ").title(),
+            is_visible=True,
+        )
 
     progress = ProgressService.increment_questions_answered(user_id=user_id, topic_id=topic_id)
     return jsonify(
@@ -136,4 +148,3 @@ def _serialise_progress(progress: StudentProgress, topic: Topic | None = None) -
             progress.last_accessed.isoformat() if progress.last_accessed else None
         ),
     }
-

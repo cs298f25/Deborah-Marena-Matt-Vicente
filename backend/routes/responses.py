@@ -30,11 +30,10 @@ def create_response():
 
     topic = topic_repository.get_by_id(payload["topic"])
     if not topic:
-        return (
-            jsonify(
-                {"error": "NotFound", "message": f"Topic '{payload['topic']}' does not exist."}
-            ),
-            404,
+        topic = topic_repository.create_topic(
+            topic_id=payload["topic"],
+            name=payload["topic"].replace("-", " ").title(),
+            is_visible=True,
         )
 
     response = ResponseService.create_response(payload)

@@ -9,7 +9,8 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 
 from backend.config import get_config
-from backend.models import db, RosterStudent, UploadHistory  # Import models so SQLAlchemy discovers them
+from backend.models import db, RosterStudent, Topic, UploadHistory  # Import models so SQLAlchemy discovers them
+from backend.topic_definitions import TOPIC_DEFINITIONS
 from backend.routes import (
     auth_bp,
     progress_bp,
@@ -49,6 +50,7 @@ def _configure_extensions(app: Flask) -> None:
 
     with app.app_context():
         db.create_all()
+        _seed_topics_if_empty()
 
     origins = app.config.get("CORS_ORIGINS", ["http://localhost:5173"])
     CORS(
@@ -116,6 +118,25 @@ def _register_error_handlers(app: Flask) -> None:
             ),
             HTTPStatus.INTERNAL_SERVER_ERROR,
         )
+
+def _seed_topics_if_empty() -> None:
+    """Insert default topics if none exist (helps local/dev environments)."""
+
+    existing_count = db.session.query(Topic).count()
+    if existing_count > 0:
+        return
+
+    for topic in TOPIC_DEFINITIONS:
+        db.session.add(
+            Topic(
+                id=topic["id"],
+                name=topic["name"],
+                is_visible=topic["is_visible"],
+                order_index=topic["order_index"],
+            )
+        )
+    db.session.commit()
+    logging.info("Seeded default topics into empty database.")
 
 
 # Application instance for Gunicorn

@@ -199,6 +199,26 @@ function App() {
     setCurrentUser(null);
   };
 
+  // Hydrate server-side progress after login so completion follows users across browsers.
+  useEffect(() => {
+    if (!currentUser) return;
+
+    (async () => {
+      try {
+        const progress = await progressService.getUserProgress(currentUser.id);
+        const completed = progress
+          .filter(p => p.total_subtopics > 0 && p.subtopics_completed >= p.total_subtopics)
+          .map(p => p.topic);
+
+        if (completed.length) {
+          setCompletedTopics(prev => new Set([...prev, ...completed]));
+        }
+      } catch (error) {
+        console.error('Failed to load server progress:', error);
+      }
+    })();
+  }, [currentUser]);
+
   if (!currentUser) {
     return <LoginScreen onLogin={(user) => setCurrentUser(user)} />;
   }
