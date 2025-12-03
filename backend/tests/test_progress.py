@@ -51,3 +51,22 @@ def test_update_progress_invalid_data(client, student1_id):
     )
     assert response.status_code == 400
 
+
+def test_increment_questions_answered(client, student1_id):
+    """Increment endpoint should create or update progress."""
+
+    response = client.post(f"/api/progress/{student1_id}/new-topic/increment")
+    assert response.status_code == 200
+    assert response.get_json()["questions_answered"] == 1
+
+    # Increment again and ensure it increments.
+    response = client.post(f"/api/progress/{student1_id}/new-topic/increment")
+    assert response.status_code == 200
+    assert response.get_json()["questions_answered"] == 2
+
+
+def test_progress_unknown_user(client):
+    """Requests for unknown users return 404."""
+
+    response = client.get("/api/progress/9999")
+    assert response.status_code == 404

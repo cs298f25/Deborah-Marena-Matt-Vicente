@@ -48,3 +48,31 @@ def test_get_nonexistent_topic(client):
     response = client.get("/api/topics/nonexistent-topic")
     assert response.status_code == 404
 
+
+def test_create_topic_and_conflict(client):
+    """Creating a topic succeeds once and conflicts on duplicate."""
+
+    payload = {"id": "new-topic", "name": "New Topic", "is_visible": True, "order_index": 5}
+    created = client.post("/api/topics", json=payload)
+    assert created.status_code == 201
+
+    conflict = client.post("/api/topics", json=payload)
+    assert conflict.status_code == 409
+
+
+def test_update_topic_visibility_invalid_payload(client):
+    """Visibility endpoint requires boolean."""
+
+    response = client.patch("/api/topics/test-topic-1/visibility", json={"is_visible": "yes"})
+    assert response.status_code == 400
+
+
+def test_create_topic_shows_in_instructor_list(client):
+    """Newly created topics appear in instructor listing."""
+
+    payload = {"id": "fresh-topic", "name": "Fresh Topic", "is_visible": True}
+    created = client.post("/api/topics", json=payload)
+    assert created.status_code == 201
+
+    topics = client.get("/api/topics?role=instructor").get_json()["topics"]
+    assert any(t["id"] == "fresh-topic" for t in topics)

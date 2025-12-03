@@ -54,3 +54,40 @@ def test_get_nonexistent_student_responses(client):
     data = response.get_json()
     assert data["responses"] == []
 
+
+def test_submit_response_invalid_status(client, student1_id):
+    """Invalid status values should be rejected."""
+
+    payload = {
+        "user_id": student1_id,
+        "topic": "test-topic-1",
+        "subtopic_type": "TestSubtopic",
+        "question_code": "x = 10\nx",
+        "student_answer": "10",
+        "correct_answer": "10",
+        "is_correct": True,
+        "status": "maybe",
+        "time_spent": 45,
+    }
+
+    response = client.post("/api/responses", json=payload)
+    assert response.status_code == 400
+
+
+def test_submit_response_unknown_user(client):
+    """Submitting for an unknown user should fail."""
+
+    payload = {
+        "user_id": 9999,
+        "topic": "test-topic-1",
+        "subtopic_type": "TestSubtopic",
+        "question_code": "x = 10\nx",
+        "student_answer": "10",
+        "correct_answer": "10",
+        "is_correct": True,
+        "status": "correct",
+        "time_spent": 45,
+    }
+
+    response = client.post("/api/responses", json=payload)
+    assert response.status_code == 404

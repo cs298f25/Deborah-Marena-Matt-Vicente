@@ -28,6 +28,15 @@ def test_login_missing_email(client):
     assert response.status_code == 400
 
 
+def test_login_instructor_email(client):
+    """Instructor emails should be assigned instructor role."""
+
+    response = client.post("/api/auth/login", json={"email": "prof@test.com"})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["user"]["role"] == "instructor"
+
+
 def test_get_profile_requires_session(client):
     """Fetching profile without login returns 401."""
 
@@ -44,4 +53,3 @@ def test_get_profile_after_login(client):
 
     data = response.get_json()
     assert data["email"] == "student1@test.com"
-
