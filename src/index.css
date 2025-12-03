@@ -44,6 +44,11 @@
   --bg-dashboard-card-hover: rgba(255, 255, 255, 0.95);
   --border-dashboard-card: rgba(55, 118, 171, 0.25);
   --text-dashboard: #1e293b;
+
+  /* Modal surface for light mode */
+  --bg-modal: rgba(255, 255, 255, 0.98);
+  --border-modal: rgba(55, 118, 171, 0.25);
+  --shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.18);
 }
 
 [data-theme="dark"] {
@@ -73,6 +78,11 @@
   --bg-dashboard-card-hover: rgba(255, 255, 255, 0.15);
   --border-dashboard-card: rgba(255, 255, 255, 0.2);
   --text-dashboard: #ffffff;
+
+  /* Modal surface for dark mode */
+  --bg-modal: rgba(15, 23, 42, 0.95);
+  --border-modal: rgba(148, 163, 184, 0.35);
+  --shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.55);
 }
 
 /* Focus states for accessibility */
