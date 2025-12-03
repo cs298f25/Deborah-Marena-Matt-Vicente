@@ -26,6 +26,8 @@ export default function InstructorDashboard() {
   const [selectedStudent, setSelectedStudent] = useState<StudentReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [rosterSearchTerm, setRosterSearchTerm] = useState('');
+  const [lookupError, setLookupError] = useState<string | null>(null);
   const [showRoster, setShowRoster] = useState(false);
 
   useEffect(() => {
@@ -45,10 +47,12 @@ export default function InstructorDashboard() {
 
   const viewStudentReport = async (studentId: number) => {
     try {
+      setLookupError(null);
       const report = await reportsService.getStudentReport(studentId);
       setSelectedStudent(report);
     } catch (error) {
       console.error('Failed to load student report:', error);
+      setLookupError('Unable to load analytics for this student right now.');
     }
   };
 
@@ -92,6 +96,24 @@ export default function InstructorDashboard() {
       student.student_name.toLowerCase().includes(normalizedSearch),
     );
   }, [strugglingStudents, normalizedSearch]);
+
+  const normalizedRosterSearch = rosterSearchTerm.trim().toLowerCase();
+  const rosterMatches = useMemo(() => {
+    if (!normalizedRosterSearch) return rosteredStudents;
+    return rosteredStudents.filter((student) => {
+      const name = student.student_name?.toLowerCase() ?? '';
+      const email = student.student_email?.toLowerCase() ?? '';
+      return name.includes(normalizedRosterSearch) || email.includes(normalizedRosterSearch);
+    });
+  }, [rosteredStudents, normalizedRosterSearch]);
+
+  const handleRosterSelection = (studentId: number | null) => {
+    if (!studentId) {
+      setLookupError('This student has not logged in yet, so analytics are unavailable.');
+      return;
+    }
+    viewStudentReport(studentId);
+  };
 
   if (loading) {
     return <div className="dashboard-loading">Loading dashboard…</div>;
@@ -410,6 +432,54 @@ export default function InstructorDashboard() {
                 </div>
               );
             })}
+        </div>
+      </section>
+
+      <section className="dashboard-section">
+        <div className="section-header">
+          <h2>Student Lookup</h2>
+          <input
+            type="search"
+            placeholder="Search by name or email…"
+            className="search-input"
+            value={rosterSearchTerm}
+            onChange={(event) => {
+              setRosterSearchTerm(event.target.value);
+              setLookupError(null);
+            }}
+          />
+        </div>
+
+        {lookupError && <div className="inline-alert">{lookupError}</div>}
+
+        <div className="roster-lookup-grid">
+          {rosterMatches.length === 0 ? (
+            <div className="students-table__empty">No students match that search.</div>
+          ) : (
+            rosterMatches.map((student) => (
+              <button
+                key={`${student.student_email}-${student.student_id ?? 'pending'}`}
+                className="roster-lookup-card"
+                onClick={() => handleRosterSelection(student.student_id)}
+                type="button"
+              >
+                <div className="roster-lookup-card__avatar">
+                  {student.student_name?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+                <div className="roster-lookup-card__info">
+                  <div className="roster-lookup-card__name">{student.student_name}</div>
+                  <div className="roster-lookup-card__email">{student.student_email}</div>
+                </div>
+                <div
+                  className={`roster-lookup-card__status ${
+                    student.student_id ? 'roster-lookup-card__status--ready' : 'roster-lookup-card__status--inactive'
+                  }`}
+                >
+                  {student.student_id ? 'View analytics' : 'Not signed in yet'}
+                </div>
+              </button>
+            ))
+          )}
         </div>
       </section>
 
