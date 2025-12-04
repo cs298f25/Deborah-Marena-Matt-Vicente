@@ -21,6 +21,11 @@ const createDownload = (data: unknown, filename: string) => {
   URL.revokeObjectURL(link.href);
 };
 
+const parseLocalDate = (dateString: string): Date => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year || 0, (month || 1) - 1, day || 1);
+};
+
 export default function InstructorDashboard() {
   const [classOverview, setClassOverview] = useState<ClassOverview | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentReport | null>(null);
@@ -71,7 +76,30 @@ export default function InstructorDashboard() {
     }
   };
 
-  const recentActivity = classOverview?.recent_activity ?? [];
+  const recentActivity = useMemo(() => {
+    if (!classOverview) return [];
+
+    const activityMap = new Map(
+      (classOverview.recent_activity ?? []).map((day) => [day.date, day]),
+    );
+
+    const filledWindow: NonNullable<ClassOverview['recent_activity']>[number][] = [];
+    for (let offset = 6; offset >= 0; offset -= 1) {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() - offset);
+      const key = [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0'),
+      ].join('-');
+      const entry =
+        activityMap.get(key) ?? { date: key, questions_answered: 0, active_students: 0 };
+      filledWindow.push(entry);
+    }
+
+    return filledWindow;
+  }, [classOverview]);
   const maxQuestionsInActivity =
     recentActivity.length > 0
       ? Math.max(...recentActivity.map((day) => day.questions_answered))
@@ -374,7 +402,7 @@ export default function InstructorDashboard() {
                       title={`${day.questions_answered} questions · ${day.active_students} students`}
                     />
                     <div className="chart-bar__label">
-                      {new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
+                      {parseLocalDate(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
                     </div>
                     <div className="chart-bar__value">{day.questions_answered}</div>
                   </div>
