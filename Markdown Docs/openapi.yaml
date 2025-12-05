@@ -2,12 +2,15 @@ openapi: 3.0.0
 info:
   title: Bytepath Student Management API
   description: |
-    REST API for managing student resources in the Bytepath learning platform.
+    REST API for managing student resources, topics, progress, responses, and reports in the Bytepath learning platform.
     
-    This API allows professors to:
-    - Retrieve paginated lists of students with search functionality
-    - Upload CSV files to bulk insert or update students
-    - Download CSV templates for student data uploads
+    This API allows:
+    - Authentication and user management
+    - Student roster management (CRUD operations, CSV uploads)
+    - Topic management and visibility control
+    - Progress tracking for students across topics
+    - Response tracking for student answers
+    - Analytics and reporting for students, topics, and class overview
     
     All endpoints return JSON responses except for the template download endpoint which returns a CSV file.
   version: 1.0.0
@@ -23,10 +26,96 @@ servers:
     description: Production server (replace with your actual domain)
 
 tags:
+  - name: Authentication
+    description: User authentication and profile management
   - name: Students
-    description: Student management operations
+    description: Student roster management operations
+  - name: Topics
+    description: Topic management and visibility control
+  - name: Progress
+    description: Student progress tracking across topics
+  - name: Responses
+    description: Student response and answer tracking
+  - name: Reports
+    description: Analytics and reporting endpoints
 
 paths:
+  # Authentication endpoints
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate or auto-register a user
+      description: |
+        Authenticates a user by email. If the user doesn't exist, automatically creates
+        a new student record. Stores user_id in the session cookie.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "student@example.com"
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+              example:
+                user:
+                  id: 42
+                  email: "student@example.com"
+                  name: "Student Example"
+                  role: "student"
+        '400':
+          description: Bad request - email is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get current authenticated user profile
+      description: |
+        Returns the logged-in user based on session cookie.
+        Responds with 401 if no session exists.
+      operationId: getProfile
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Student endpoints
   /api/students:
     get:
       tags:
@@ -35,8 +124,6 @@ paths:
       description: |
         Retrieves a paginated list of students. Supports optional search filtering
         on first name, last name, or email (case-insensitive).
-        
-        Used by the frontend React application in `StudentsPage.tsx`.
       operationId: getStudents
       parameters:
         - name: page
@@ -65,6 +152,34 @@ paths:
           schema:
             type: string
           example: "john"
+        - name: include_deleted
+          in: query
+          description: Include soft-deleted students in results
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: class_name
+          in: query
+          description: Filter by class name
+          required: false
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          description: Field to sort by
+          required: false
+          schema:
+            type: string
+            default: "created_at"
+        - name: sort_order
+          in: query
+          description: Sort order (asc or desc)
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: "desc"
       responses:
         '200':
           description: Successful response with paginated student list
@@ -72,26 +187,322 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StudentListResponse'
-              examples:
-                default:
-                  value:
-                    items:
-                      - id: 1
-                        email: "john.doe@moravian.edu"
-                        first_name: "John"
-                        last_name: "Doe"
-                        created_at: "2024-01-15T10:30:00"
-                        updated_at: "2024-01-15T10:30:00"
-                      - id: 2
-                        email: "jane.smith@moravian.edu"
-                        first_name: "Jane"
-                        last_name: "Smith"
-                        created_at: "2024-01-15T11:00:00"
-                        updated_at: "2024-01-15T11:00:00"
-                    page: 1
-                    page_size: 20
-                    total: 2
-                    total_pages: 1
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Students
+      summary: Create a single student manually
+      description: |
+        Creates a new student record. Email must be unique.
+      operationId: createStudent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - first_name
+                - last_name
+              properties:
+                email:
+                  type: string
+                  format: email
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                notes:
+                  type: string
+                class_name:
+                  type: string
+      responses:
+        '201':
+          description: Student created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RosterStudent'
+        '400':
+          description: Bad request - missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - student with this email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/students/{id}:
+    get:
+      tags:
+        - Students
+      summary: Get single student by ID
+      description: Returns a single student record by ID
+      operationId: getStudent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Student retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RosterStudent'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      tags:
+        - Students
+      summary: Partially update a student
+      description: |
+        Updates student fields. Only provided fields will be updated.
+        Used for inline editing in the UI.
+      operationId: updateStudent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                notes:
+                  type: string
+                class_name:
+                  type: string
+      responses:
+        '200':
+          description: Student updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RosterStudent'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - email already in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Students
+      summary: Delete a student
+      description: |
+        Soft deletes a student by default. Use hard=true query parameter
+        for permanent deletion.
+      operationId: deleteStudent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: hard
+          in: query
+          description: If true, permanently delete instead of soft delete
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '204':
+          description: Student deleted successfully
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/students/{id}/restore:
+    patch:
+      tags:
+        - Students
+      summary: Restore a soft-deleted student
+      description: Restores a previously soft-deleted student
+      operationId: restoreStudent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Student restored successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RosterStudent'
+        '400':
+          description: Student is not deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/students/bulk:
+    delete:
+      tags:
+        - Students
+      summary: Bulk delete multiple students
+      description: Soft deletes multiple students at once
+      operationId: bulkDeleteStudents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - student_ids
+              properties:
+                student_ids:
+                  type: array
+                  items:
+                    type: integer
+                hard:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Bulk delete completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: integer
+        '400':
+          description: Bad request - student_ids array is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/students/add:
+    post:
+      tags:
+        - Students
+      summary: Add students via CSV upload
+      description: |
+        Uploads a CSV file to add new students or update existing ones.
+        Returns a summary of operations and any validation errors.
+      operationId: addStudents
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "CSV file with student data (columns: first_name, last_name, email)"
+      responses:
+        '201':
+          description: Students added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddDropResponse'
+        '400':
+          description: Bad request - missing file or invalid format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/students/drop:
+    post:
+      tags:
+        - Students
+      summary: Drop (soft delete) students via CSV upload
+      description: |
+        Uploads a CSV file to soft delete students from the roster.
+        Returns a summary of operations and any validation errors.
+      operationId: dropStudents
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "CSV file with student data (columns: first_name, last_name, email)"
+      responses:
+        '200':
+          description: Students dropped successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddDropResponse'
+        '400':
+          description: Bad request - missing file or invalid format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal server error
           content:
@@ -103,18 +514,10 @@ paths:
     post:
       tags:
         - Students
-      summary: Upload CSV file to insert or update students
+      summary: Upload CSV file (legacy endpoint)
       description: |
-        Uploads a CSV file containing student data. The API will:
-        - Insert new students that don't exist (based on email)
-        - Update existing students if they already exist (based on email)
-        - Skip rows with missing required fields (first_name, last_name, email)
-        - Return a summary of operations and any validation errors
-        
-        CSV format should have columns: first_name, last_name, email (case-insensitive headers).
-        The API normalizes field names by converting to lowercase and replacing spaces with underscores.
-        
-        Used by the frontend React application in `StudentsPage.tsx`.
+        Legacy endpoint for backward compatibility. Redirects to /add.
+        Uploads a CSV file containing student data.
       operationId: uploadStudentsCsv
       requestBody:
         required: true
@@ -129,9 +532,6 @@ paths:
                   type: string
                   format: binary
                   description: "CSV file with student data (columns: first_name, last_name, email)"
-            encoding:
-              file:
-                contentType: text/csv
       responses:
         '200':
           description: Successful upload with processing summary
@@ -139,51 +539,89 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UploadResponse'
-              examples:
-                success:
-                  value:
-                    summary:
-                      inserted: 5
-                      updated: 2
-                      skipped: 0
-                      total_processed: 7
-                    errors: []
-                with_errors:
-                  value:
-                    summary:
-                      inserted: 3
-                      updated: 1
-                      skipped: 0
-                      total_processed: 5
-                    errors:
-                      - line: 3
-                        reason: "Missing email"
-                      - line: 6
-                        reason: "Missing first_name"
         '400':
           description: Bad request - missing file, invalid file type, or empty file
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                no_file:
-                  value:
-                    error: "No file provided"
-                no_file_selected:
-                  value:
-                    error: "No file selected"
-                invalid_type:
-                  value:
-                    error: "File must be a CSV"
         '500':
           description: Internal server error during file processing
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              example:
-                error: "Database connection failed"
+
+  /api/students/upload-history:
+    get:
+      tags:
+        - Students
+      summary: Get list of CSV uploads
+      description: |
+        Returns paginated list of all CSV upload operations with their summaries.
+      operationId: getUploadHistory
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: from_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Upload history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uploads:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UploadHistory'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /api/students/upload-history/{id}:
+    get:
+      tags:
+        - Students
+      summary: Get detailed change log for a specific upload
+      description: Returns detailed information about a specific CSV upload operation
+      operationId: getUploadDetails
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Upload details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadHistory'
+        '404':
+          description: Upload not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/students/template:
     get:
@@ -192,10 +630,7 @@ paths:
       summary: Download CSV template for student uploads
       description: |
         Downloads a CSV template file that can be used as a reference for
-        the expected format when uploading student data. The template includes
-        example rows showing the required columns: first_name, last_name, email.
-        
-        Used by the frontend React application in `StudentsPage.tsx` as a download link.
+        the expected format when uploading student data.
       operationId: downloadStudentTemplate
       responses:
         '200':
@@ -211,51 +646,659 @@ paths:
               schema:
                 type: string
                 format: binary
-              example: |
-                first_name,last_name,email
-                John,Doe,john.doe@example.com
-                Jane,Smith,jane.smith@example.com
+
+  # Topic endpoints
+  /api/topics:
+    get:
+      tags:
+        - Topics
+      summary: List all topics
+      description: |
+        Returns topics filtered by the requester's role.
+        Students only receive visible topics.
+      operationId: getTopics
+      parameters:
+        - name: role
+          in: query
+          description: Filter by role (student or instructor)
+          required: false
+          schema:
+            type: string
+            enum: [student, instructor]
+            default: student
+      responses:
+        '200':
+          description: Topics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  topics:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TopicBasic'
+
+    post:
+      tags:
+        - Topics
+      summary: Create a new topic
+      description: Creates a new topic record
+      operationId: createTopic
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - name
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                is_visible:
+                  type: boolean
+                  default: true
+                order_index:
+                  type: integer
+      responses:
+        '201':
+          description: Topic created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  topic:
+                    $ref: '#/components/schemas/TopicDetail'
+        '400':
+          description: Bad request - missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - topic with this ID already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/topics/{topic_id}:
+    get:
+      tags:
+        - Topics
+      summary: Get single topic by ID
+      description: Returns metadata for a single topic including creation timestamp
+      operationId: getTopic
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Topic retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicDetail'
+        '404':
+          description: Topic not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Topics
+      summary: Update topic metadata
+      description: |
+        Updates metadata for an existing topic. Cannot change topic ID.
+      operationId: updateTopic
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                order_index:
+                  type: integer
+                is_visible:
+                  type: boolean
+      responses:
+        '200':
+          description: Topic updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  topic:
+                    $ref: '#/components/schemas/TopicBasic'
+        '400':
+          description: Bad request - cannot change topic ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Topic not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/topics/{topic_id}/visibility:
+    patch:
+      tags:
+        - Topics
+      summary: Toggle topic visibility
+      description: Updates the visibility status of a topic
+      operationId: updateTopicVisibility
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_visible
+              properties:
+                is_visible:
+                  type: boolean
+      responses:
+        '200':
+          description: Topic visibility updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  topic:
+                    $ref: '#/components/schemas/TopicBasic'
+        '400':
+          description: Bad request - is_visible must be a boolean
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Topic not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Progress endpoints
+  /api/progress/{user_id}:
+    get:
+      tags:
+        - Progress
+      summary: Get progress for all topics for a user
+      description: Returns aggregated progress with topic metadata for all topics
+      operationId: getUserProgress
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Progress retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                  user_name:
+                    type: string
+                  progress:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Progress'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/progress/{user_id}/{topic_id}:
+    get:
+      tags:
+        - Progress
+      summary: Get progress for a specific topic
+      description: Returns progress for a single topic for the requested user
+      operationId: getTopicProgress
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Progress retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Progress'
+        '404':
+          description: Progress or user not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Progress
+      summary: Create or update topic progress
+      description: |
+        Creates or updates a progress record for a given user and topic.
+        Requires subtopics_completed (>=0) and total_subtopics (>0).
+      operationId: updateTopicProgress
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - subtopics_completed
+                - total_subtopics
+              properties:
+                subtopics_completed:
+                  type: integer
+                  minimum: 0
+                total_subtopics:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Progress updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  progress:
+                    $ref: '#/components/schemas/Progress'
+        '400':
+          description: Bad request - missing or invalid fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/progress/{user_id}/{topic_id}/increment:
+    post:
+      tags:
+        - Progress
+      summary: Increment questions answered
+      description: |
+        Increments the number of questions answered for a topic.
+        Also updates the last_accessed timestamp.
+      operationId: incrementQuestionsAnswered
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Progress incremented successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  questions_answered:
+                    type: integer
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Response endpoints
+  /api/responses:
+    post:
+      tags:
+        - Responses
+      summary: Create a new student response
+      description: |
+        Persists a new student response and automatically increments
+        the questions_answered counter for the relevant topic.
+      operationId: createResponse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+                - topic
+                - subtopic_type
+                - question_code
+                - correct_answer
+                - is_correct
+              properties:
+                user_id:
+                  type: integer
+                topic:
+                  type: string
+                subtopic_type:
+                  type: string
+                question_code:
+                  type: string
+                student_answer:
+                  type: string
+                correct_answer:
+                  type: string
+                is_correct:
+                  type: boolean
+                status:
+                  type: string
+                  enum: [correct, incorrect, skipped]
+                time_spent:
+                  type: integer
+                  description: Time spent in seconds
+      responses:
+        '201':
+          description: Response recorded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  response:
+                    $ref: '#/components/schemas/StudentResponse'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/responses/student/{student_id}:
+    get:
+      tags:
+        - Responses
+      summary: Get all responses for a student
+      description: Returns all response attempts for a given student, newest first
+      operationId: getStudentResponses
+      parameters:
+        - name: student_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Responses retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  responses:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StudentResponse'
+
+  # Report endpoints
+  /api/reports/student/{student_id}:
+    get:
+      tags:
+        - Reports
+      summary: Get detailed student performance report
+      description: |
+        Returns comprehensive performance analytics for a single student,
+        including overall stats, per-topic breakdown, performance over time,
+        and struggling subtopics.
+      operationId: getStudentReport
+      parameters:
+        - name: student_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Report retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentReport'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reports/topic/{topic_id}:
+    get:
+      tags:
+        - Reports
+      summary: Get topic difficulty analysis
+      description: |
+        Returns difficulty analysis across all students for a topic,
+        including completion rates, per-subtopic success rates,
+        and most-missed questions.
+      operationId: getTopicReport
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Report retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicReport'
+        '404':
+          description: Topic not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reports/class/overview:
+    get:
+      tags:
+        - Reports
+      summary: Get class-wide dashboard metrics
+      description: |
+        Returns class-wide dashboard metrics including total/active students,
+        overall accuracy, topic statistics, top performers, struggling students,
+        and recent activity.
+      operationId: getClassOverview
+      responses:
+        '200':
+          description: Overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassOverview'
+
+  /api/reports/question/{topic_id}/analytics:
+    get:
+      tags:
+        - Reports
+      summary: Get question-level analytics
+      description: |
+        Returns question-level analytics for a topic, optionally filtered by subtopic type.
+        Includes attempts, accuracy, timing, and unique student counts per question.
+      operationId: getQuestionAnalytics
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: subtopic_type
+          in: query
+          description: Optional filter by subtopic type
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionAnalytics'
 
 components:
   schemas:
-    Student:
+    User:
       type: object
-      description: A student resource
+      description: A user resource
       properties:
         id:
           type: integer
-          description: Unique identifier for the student
-          example: 1
+          example: 42
         email:
           type: string
           format: email
-          description: Student's email address (must be unique)
-          example: "john.doe@moravian.edu"
-        first_name:
+          example: "student@example.com"
+        name:
           type: string
-          description: Student's first name
-          example: "John"
-        last_name:
+          example: "Student Example"
+        role:
           type: string
-          description: Student's last name
-          example: "Doe"
+          enum: [student, instructor]
+          example: "student"
         created_at:
           type: string
           format: date-time
-          description: Timestamp when the student record was created
-          example: "2024-01-15T10:30:00"
+          nullable: true
+      required:
+        - id
+        - email
+        - name
+        - role
+
+    RosterStudent:
+      type: object
+      description: A student in the roster
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
         updated_at:
           type: string
           format: date-time
           nullable: true
-          description: Timestamp when the student record was last updated
-          example: "2024-01-15T10:30:00"
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        class_name:
+          type: string
+          nullable: true
+        last_updated_via:
+          type: string
+          nullable: true
+        last_upload_id:
+          type: integer
+          nullable: true
       required:
         - id
         - email
         - first_name
         - last_name
-        - created_at
 
     StudentListResponse:
       type: object
@@ -263,24 +1306,19 @@ components:
       properties:
         items:
           type: array
-          description: Array of student objects
           items:
-            $ref: '#/components/schemas/Student'
+            $ref: '#/components/schemas/RosterStudent'
         page:
           type: integer
-          description: Current page number (1-indexed)
           example: 1
         page_size:
           type: integer
-          description: Number of items per page
           example: 20
         total:
           type: integer
-          description: Total number of students matching the query
           example: 45
         total_pages:
           type: integer
-          description: Total number of pages available
           example: 3
       required:
         - items
@@ -291,28 +1329,19 @@ components:
 
     UploadResponse:
       type: object
-      description: Response from CSV upload operation
+      description: Response from CSV upload operation (legacy)
       properties:
         summary:
           type: object
-          description: Summary of upload processing results
           properties:
             inserted:
               type: integer
-              description: Number of new students inserted
-              example: 5
             updated:
               type: integer
-              description: Number of existing students updated
-              example: 2
             skipped:
               type: integer
-              description: Number of rows skipped (duplicates or invalid)
-              example: 0
             total_processed:
               type: integer
-              description: Total number of data rows processed (excluding header)
-              example: 7
           required:
             - inserted
             - updated
@@ -320,12 +1349,106 @@ components:
             - total_processed
         errors:
           type: array
-          description: Array of validation errors encountered during processing
           items:
             $ref: '#/components/schemas/ValidationError'
       required:
         - summary
         - errors
+
+    AddDropResponse:
+      type: object
+      description: Response from add/drop CSV upload operation
+      properties:
+        upload_id:
+          type: integer
+        action:
+          type: string
+          enum: [add, drop]
+        summary:
+          type: object
+          properties:
+            inserted:
+              type: integer
+            updated:
+              type: integer
+            skipped:
+              type: integer
+            total_processed:
+              type: integer
+          required:
+            - inserted
+            - updated
+            - skipped
+            - total_processed
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+        upload_history:
+          $ref: '#/components/schemas/UploadHistory'
+      required:
+        - upload_id
+        - action
+        - summary
+        - errors
+        - upload_history
+
+    UploadHistory:
+      type: object
+      description: Upload history record with change log
+      properties:
+        id:
+          type: integer
+        filename:
+          type: string
+        uploaded_at:
+          type: string
+          format: date-time
+        uploaded_by:
+          type: integer
+          nullable: true
+        action:
+          type: string
+          enum: [add, drop, sync]
+        summary:
+          type: object
+          properties:
+            added:
+              type: integer
+            updated:
+              type: integer
+            removed:
+              type: integer
+            skipped:
+              type: integer
+            restored:
+              type: integer
+            not_found:
+              type: integer
+            total:
+              type: integer
+        changes:
+          type: array
+          items:
+            type: object
+      required:
+        - id
+        - filename
+        - uploaded_at
+        - action
+        - summary
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
 
     ValidationError:
       type: object
@@ -333,15 +1456,350 @@ components:
       properties:
         line:
           type: integer
-          description: Line number in the CSV file where the error occurred (1-indexed, excluding header)
+          description: Line number in the CSV file (1-indexed, excluding header)
           example: 3
         reason:
           type: string
-          description: Description of the validation error
           example: "Missing email"
       required:
         - line
         - reason
+
+    TopicBasic:
+      type: object
+      description: Basic topic information
+      properties:
+        id:
+          type: string
+          example: "basic-variables"
+        name:
+          type: string
+          example: "Basic Variables"
+        is_visible:
+          type: boolean
+        order_index:
+          type: integer
+          nullable: true
+      required:
+        - id
+        - name
+        - is_visible
+
+    TopicDetail:
+      allOf:
+        - $ref: '#/components/schemas/TopicBasic'
+        - type: object
+          properties:
+            created_at:
+              type: string
+              format: date-time
+              nullable: true
+
+    Progress:
+      type: object
+      description: Student progress for a topic
+      properties:
+        user_id:
+          type: integer
+        topic:
+          type: string
+        topic_name:
+          type: string
+        subtopics_completed:
+          type: integer
+        total_subtopics:
+          type: integer
+        completion_percentage:
+          type: number
+          format: float
+        questions_answered:
+          type: integer
+        last_accessed:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - user_id
+        - topic
+        - subtopics_completed
+        - total_subtopics
+        - completion_percentage
+        - questions_answered
+
+    StudentResponse:
+      type: object
+      description: A student's answer attempt
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        topic:
+          type: string
+        subtopic_type:
+          type: string
+        question_code:
+          type: string
+        student_answer:
+          type: string
+          nullable: true
+        correct_answer:
+          type: string
+        is_correct:
+          type: boolean
+        status:
+          type: string
+          enum: [correct, incorrect, skipped]
+        time_spent:
+          type: integer
+          nullable: true
+        attempted_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - user_id
+        - topic
+        - subtopic_type
+        - question_code
+        - correct_answer
+        - is_correct
+
+    StudentReport:
+      type: object
+      description: Comprehensive student performance report
+      properties:
+        student_id:
+          type: integer
+        student_name:
+          type: string
+        student_email:
+          type: string
+        overall_stats:
+          type: object
+          properties:
+            total_questions_answered:
+              type: integer
+            total_correct:
+              type: integer
+            total_incorrect:
+              type: integer
+            total_skipped:
+              type: integer
+            overall_accuracy:
+              type: number
+              format: float
+            avg_time_per_question:
+              type: number
+              format: float
+            topics_started:
+              type: integer
+            topics_completed:
+              type: integer
+        topic_breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              topic:
+                type: string
+              topic_name:
+                type: string
+              questions_answered:
+                type: integer
+              correct:
+                type: integer
+              incorrect:
+                type: integer
+              skipped:
+                type: integer
+              accuracy:
+                type: number
+                format: float
+              avg_time:
+                type: number
+                format: float
+              completion_percentage:
+                type: number
+                format: float
+              last_accessed:
+                type: string
+                format: date-time
+                nullable: true
+        performance_over_time:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              questions_answered:
+                type: integer
+              accuracy:
+                type: number
+                format: float
+        struggling_subtopics:
+          type: array
+          items:
+            type: object
+            properties:
+              topic:
+                type: string
+              subtopic_type:
+                type: string
+              attempts:
+                type: integer
+              correct:
+                type: integer
+              accuracy:
+                type: number
+                format: float
+
+    TopicReport:
+      type: object
+      description: Topic difficulty analysis report
+      properties:
+        topic:
+          type: string
+        topic_name:
+          type: string
+        overall_stats:
+          type: object
+          properties:
+            total_students:
+              type: integer
+            students_started:
+              type: integer
+            students_completed:
+              type: integer
+            total_attempts:
+              type: integer
+            avg_accuracy:
+              type: number
+              format: float
+            avg_time_per_question:
+              type: number
+              format: float
+        subtopic_difficulty:
+          type: array
+          items:
+            type: object
+            properties:
+              subtopic_type:
+                type: string
+              attempts:
+                type: integer
+              accuracy:
+                type: number
+                format: float
+        most_missed_questions:
+          type: array
+          items:
+            type: object
+            properties:
+              question_code:
+                type: string
+              attempts:
+                type: integer
+              accuracy:
+                type: number
+                format: float
+
+    ClassOverview:
+      type: object
+      description: Class-wide dashboard metrics
+      properties:
+        total_students:
+          type: integer
+        active_students:
+          type: integer
+        overall_accuracy:
+          type: number
+          format: float
+        topic_stats:
+          type: array
+          items:
+            type: object
+            properties:
+              topic:
+                type: string
+              topic_name:
+                type: string
+              students_started:
+                type: integer
+              students_completed:
+                type: integer
+              avg_accuracy:
+                type: number
+                format: float
+        top_performers:
+          type: array
+          items:
+            type: object
+            properties:
+              student_id:
+                type: integer
+              student_name:
+                type: string
+              accuracy:
+                type: number
+                format: float
+        struggling_students:
+          type: array
+          items:
+            type: object
+            properties:
+              student_id:
+                type: integer
+              student_name:
+                type: string
+              accuracy:
+                type: number
+                format: float
+        recent_activity:
+          type: array
+          items:
+            type: object
+            properties:
+              student_id:
+                type: integer
+              student_name:
+                type: string
+              topic:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+
+    QuestionAnalytics:
+      type: object
+      description: Question-level analytics for a topic
+      properties:
+        topic:
+          type: string
+        subtopic_type:
+          type: string
+          nullable: true
+        questions:
+          type: array
+          items:
+            type: object
+            properties:
+              question_code:
+                type: string
+              attempts:
+                type: integer
+              correct:
+                type: integer
+              accuracy:
+                type: number
+                format: float
+              avg_time:
+                type: number
+                format: float
+              unique_students:
+                type: integer
 
     ErrorResponse:
       type: object
