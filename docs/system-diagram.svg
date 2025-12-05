@@ -1,43 +1,63 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="420" viewBox="0 0 1080 420" role="img" aria-labelledby="title desc">
   <title id="title">BytePath System Diagram</title>
-  <desc id="desc">Students and teachers use the React and TypeScript frontend, which talks to a Flask API backed by SQLite.</desc>
+  <desc id="desc">Students and teachers hit the React + TypeScript frontend, which calls a Flask API backed by SQLite.</desc>
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#b7c9f2"/>
       <stop offset="100%" stop-color="#7ba1e0"/>
     </linearGradient>
-    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f3b57"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#17324f"/>
     </marker>
   </defs>
-  <rect width="100%" height="100%" fill="url(#bg)" rx="12"/>
-  <g fill="#1f3b57" font-family="Inter, 'Segoe UI', sans-serif" font-size="18" font-weight="600">
-    <text x="70" y="120">Users</text>
-    <text x="70" y="150" font-size="16" font-weight="500">Student</text>
-    <text x="70" y="230" font-size="16" font-weight="500">Teacher</text>
+  <rect width="100%" height="100%" fill="url(#bg)" rx="16"/>
+
+  <!-- Users -->
+  <g fill="#17324f" font-family="Inter, 'Segoe UI', sans-serif" font-weight="700">
+    <text x="80" y="120" font-size="22">Users</text>
+    <text x="80" y="170" font-size="18" font-weight="600">Student</text>
+    <text x="80" y="240" font-size="18" font-weight="600">Teacher</text>
   </g>
-  <g fill="none" stroke="#1f3b57" stroke-width="3" marker-end="url(#arrow)">
-    <line x1="180" y1="146" x2="320" y2="146"/>
-    <line x1="180" y1="226" x2="320" y2="226"/>
-    <line x1="500" y1="186" x2="640" y2="186"/>
-    <line x1="640" y1="206" x2="500" y2="206" marker-end="url(#arrow)"/>
+
+  <!-- User to Frontend arrows -->
+  <g fill="none" stroke="#17324f" stroke-width="5" marker-end="url(#arrow)">
+    <line x1="180" y1="168" x2="280" y2="168" stroke-linecap="round"/>
+    <line x1="180" y1="238" x2="280" y2="238" stroke-linecap="round"/>
   </g>
+
+  <!-- Frontend -->
   <g font-family="Inter, 'Segoe UI', sans-serif" fill="#0f1720">
-    <rect x="320" y="110" width="180" height="120" rx="16" fill="#eaf1fb" stroke="#1f3b57" stroke-width="3"/>
-    <text x="410" y="145" text-anchor="middle" font-size="18" font-weight="700" fill="#1f3b57">Frontend</text>
-    <text x="410" y="170" text-anchor="middle" font-size="16" font-weight="600" fill="#1f3b57">React + TypeScript</text>
-    <text x="410" y="195" text-anchor="middle" font-size="13" font-weight="500" fill="#3c5168">Vite single-page app</text>
+    <rect x="280" y="115" width="230" height="170" rx="22" fill="#eef3fb" stroke="#17324f" stroke-width="5"/>
+    <text x="395" y="170" text-anchor="middle" font-size="22" font-weight="800" fill="#17324f">Frontend</text>
+    <text x="395" y="200" text-anchor="middle" font-size="18" font-weight="700" fill="#17324f">React + TypeScript</text>
+    <text x="395" y="225" text-anchor="middle" font-size="14" font-weight="600" fill="#42566b">Vite single-page app</text>
   </g>
-  <g font-family="Inter, 'Segoe UI', sans-serif" fill="#0f1720">
-    <rect x="500" y="150" width="120" height="100" rx="12" fill="#f7f1e8" stroke="#1f3b57" stroke-width="3"/>
-    <text x="560" y="185" text-anchor="middle" font-size="18" font-weight="700" fill="#1f3b57">API</text>
-    <text x="560" y="210" text-anchor="middle" font-size="16" font-weight="600" fill="#1f3b57">Flask</text>
-    <text x="560" y="232" text-anchor="middle" font-size="13" font-weight="500" fill="#3c5168">Auth • Roster • Progress</text>
+
+  <!-- Frontend to API arrows (bidirectional) -->
+  <g fill="none" stroke="#17324f" stroke-width="5" stroke-linecap="round">
+    <line x1="510" y1="180" x2="620" y2="180" marker-end="url(#arrow)"/>
+    <line x1="620" y1="210" x2="510" y2="210" marker-end="url(#arrow)"/>
   </g>
+
+  <!-- API -->
   <g font-family="Inter, 'Segoe UI', sans-serif" fill="#0f1720">
-    <rect x="680" y="150" width="180" height="100" rx="14" fill="#e8f5ef" stroke="#1f3b57" stroke-width="3"/>
-    <text x="770" y="185" text-anchor="middle" font-size="18" font-weight="700" fill="#1f3b57">Database</text>
-    <text x="770" y="210" text-anchor="middle" font-size="16" font-weight="600" fill="#1f3b57">SQLite</text>
-    <text x="770" y="232" text-anchor="middle" font-size="13" font-weight="500" fill="#3c5168">Topics • Users • Responses</text>
+    <rect x="620" y="135" width="170" height="130" rx="18" fill="#f8f1e6" stroke="#17324f" stroke-width="5"/>
+    <text x="705" y="185" text-anchor="middle" font-size="22" font-weight="800" fill="#17324f">API</text>
+    <text x="705" y="210" text-anchor="middle" font-size="18" font-weight="700" fill="#17324f">Flask</text>
+    <text x="705" y="235" text-anchor="middle" font-size="13" font-weight="600" fill="#42566b">Auth • Roster • Progress</text>
+  </g>
+
+  <!-- API to DB arrows (bidirectional) -->
+  <g fill="none" stroke="#17324f" stroke-width="5" stroke-linecap="round">
+    <line x1="790" y1="180" x2="920" y2="180" marker-end="url(#arrow)"/>
+    <line x1="920" y1="210" x2="790" y2="210" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- Database -->
+  <g font-family="Inter, 'Segoe UI', sans-serif" fill="#0f1720">
+    <rect x="920" y="135" width="190" height="130" rx="18" fill="#e8f5ef" stroke="#17324f" stroke-width="5"/>
+    <text x="1015" y="185" text-anchor="middle" font-size="22" font-weight="800" fill="#17324f">Database</text>
+    <text x="1015" y="210" text-anchor="middle" font-size="18" font-weight="700" fill="#17324f">SQLite</text>
+    <text x="1015" y="235" text-anchor="middle" font-size="13" font-weight="600" fill="#42566b">Topics • Users • Responses</text>
   </g>
 </svg>
