@@ -59,6 +59,9 @@ web_modules/
 # Optional REPL history
 .node_repl_history
 
+# macOS
+.DS_Store
+
 # Output of 'npm pack'
 *.tgz
 
@@ -146,6 +149,11 @@ bytepath-backend/__pycache__/
 bytepath-backend/*.py[cod]
 .deps_installed
 backend/.deps_installed
+.coverage
+.pytest_cache/
+htmlcov/
+.venv/
+venv/
 
 # Flask instance + local DBs
 instance/
