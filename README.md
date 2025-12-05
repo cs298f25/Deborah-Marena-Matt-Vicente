@@ -1,4 +1,4 @@
-# BytePath — Personalized Python Practice
+# BytePath
 
 BytePath is a full-stack learning assistant that tracks student roster data, topics, and per-question progress. The React/TypeScript frontend surfaces curated content while a Flask API handles authentication, roster uploads, topic visibility, reporting, and per-question response tracking.
 
