@@ -21,14 +21,8 @@ BytePath is a full-stack learning assistant that tracks student roster data, top
 
 ## System Diagram
 ```
-┌─────────────────┐     ┌──────────────────────┐     ┌───────────────────┐
-│  Frontend       │     │  Backend             │     │  Database         │
-│  (React/Vite)   │◄───►│  (Flask API)         │◄───►│  (SQLite)         │
-│                 │     │  - Auth & Sessions   │     │  - users          │
-│                 │     │  - Topics/Visibility │     │  - topics         │
-│                 │     │  - Rosters & Uploads │     │  - progress       │
-│                 │     │  - Progress/Reports  │     │  - responses      │
-└─────────────────┘     └──────────────────────┘     └───────────────────┘
+<img width="777" height="435" alt="Screenshot 2025-12-05 at 11 57 12 AM" src="https://github.com/user-attachments/assets/541edba9-2ca4-4a3c-8284-8d2aca48f9e2" />
+
 ```
 
 ## Prerequisites
