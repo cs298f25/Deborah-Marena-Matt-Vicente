@@ -76,20 +76,23 @@ if [ -z "$EC2_PUBLIC_IP" ]; then
     
     if [ "$IS_EC2" = true ]; then
         # On EC2: Use metadata service first (most reliable)
-        EC2_IP=$(curl -s --max-time 2 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+        echo "Trying EC2 metadata service..."
+        EC2_IP=$(curl -s --max-time 3 --connect-timeout 2 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
         
         if [ -z "$EC2_IP" ]; then
             echo "WARNING: Could not get IP from EC2 metadata service"
-            echo "Trying alternative methods..."
-            EC2_IP=$(curl -s https://api.ipify.org 2>/dev/null || \
-                     curl -s https://checkip.amazonaws.com 2>/dev/null || \
+            echo "This might indicate network connectivity issues or the instance doesn't have a public IP"
+            echo "Trying alternative methods (requires internet access)..."
+            EC2_IP=$(curl -s --max-time 5 --connect-timeout 3 https://api.ipify.org 2>/dev/null || \
+                     curl -s --max-time 5 --connect-timeout 3 https://checkip.amazonaws.com 2>/dev/null || \
                      echo "")
         fi
     else
         # Not on EC2: Use public IP services (but warn user)
         echo "WARNING: Not running on EC2 - detected IP may be your local machine's IP"
-        EC2_IP=$(curl -s https://api.ipify.org 2>/dev/null || \
-                 curl -s https://checkip.amazonaws.com 2>/dev/null || \
+        echo "Trying to detect public IP (requires internet access)..."
+        EC2_IP=$(curl -s --max-time 5 --connect-timeout 3 https://api.ipify.org 2>/dev/null || \
+                 curl -s --max-time 5 --connect-timeout 3 https://checkip.amazonaws.com 2>/dev/null || \
                  echo "")
         
         if [ -n "$EC2_IP" ]; then
@@ -103,8 +106,20 @@ if [ -z "$EC2_PUBLIC_IP" ]; then
     fi
     
     if [ -z "$EC2_IP" ]; then
+        echo ""
         echo "ERROR: Could not detect EC2 public IP address"
-        echo "Please set EC2_PUBLIC_IP environment variable:"
+        echo ""
+        echo "Possible causes:"
+        echo "  1. No internet connectivity on EC2 instance"
+        echo "  2. Security group blocking outbound HTTPS connections"
+        echo "  3. Instance doesn't have a public IP address"
+        echo ""
+        echo "Solution: Manually set your EC2 IP address"
+        echo "  1. Find your EC2 public IP in AWS Console (EC2 → Instances → Your Instance)"
+        echo "  2. Run: export EC2_PUBLIC_IP=your.ip.address.here"
+        echo "  3. Run: sudo -E bash deploy/deploy.sh"
+        echo ""
+        echo "Example:"
         echo "  export EC2_PUBLIC_IP=98.93.32.27"
         echo "  sudo -E bash deploy/deploy.sh"
         exit 1
@@ -255,16 +270,17 @@ npm run build
 FRONTEND_SERVE_DIR="$FRONTEND_DIR/dist"
 chown -R $SERVICE_USER:$SERVICE_USER "$FRONTEND_DIR"
 
-# Step 4: Create environment file
+# Step 4: Create/update environment file
 echo ""
 echo "Step 4: Setting up environment variables..."
 ENV_FILE="$BACKEND_DIR/.env"
 if [ ! -f "$ENV_FILE" ]; then
     echo "Creating .env file..."
+    SECRET_KEY=$(openssl rand -hex 32)
     cat > "$ENV_FILE" << EOF
 # BytePath Production Environment Variables
 FLASK_ENV=production
-BYTEPATH_SECRET_KEY=$(openssl rand -hex 32)
+BYTEPATH_SECRET_KEY=$SECRET_KEY
 CORS_ORIGINS=http://localhost:5173,http://$EC2_IP:5173,http://$EC2_IP:$FRONTEND_PORT
 EOF
     chown $SERVICE_USER:$SERVICE_USER "$ENV_FILE"
@@ -272,7 +288,28 @@ EOF
     echo "Created .env file at $ENV_FILE"
     echo "IMPORTANT: Review and update BYTEPATH_SECRET_KEY if needed"
 else
-    echo ".env file already exists, skipping..."
+    echo ".env file already exists, updating CORS_ORIGINS..."
+    # Preserve existing SECRET_KEY if it exists
+    if grep -q "BYTEPATH_SECRET_KEY=" "$ENV_FILE"; then
+        SECRET_KEY=$(grep "BYTEPATH_SECRET_KEY=" "$ENV_FILE" | cut -d'=' -f2-)
+    else
+        SECRET_KEY=$(openssl rand -hex 32)
+    fi
+    # Update or add CORS_ORIGINS
+    if grep -q "CORS_ORIGINS=" "$ENV_FILE"; then
+        # Update existing CORS_ORIGINS line
+        sed -i "s|CORS_ORIGINS=.*|CORS_ORIGINS=http://localhost:5173,http://$EC2_IP:5173,http://$EC2_IP:$FRONTEND_PORT|" "$ENV_FILE"
+    else
+        # Add CORS_ORIGINS if it doesn't exist
+        echo "CORS_ORIGINS=http://localhost:5173,http://$EC2_IP:5173,http://$EC2_IP:$FRONTEND_PORT" >> "$ENV_FILE"
+    fi
+    # Ensure SECRET_KEY exists
+    if ! grep -q "BYTEPATH_SECRET_KEY=" "$ENV_FILE"; then
+        echo "BYTEPATH_SECRET_KEY=$SECRET_KEY" >> "$ENV_FILE"
+    fi
+    chown $SERVICE_USER:$SERVICE_USER "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+    echo "Updated .env file with new CORS_ORIGINS"
 fi
 
 # Step 5: Create systemd service files
