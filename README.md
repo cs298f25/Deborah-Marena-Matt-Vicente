@@ -20,6 +20,9 @@ BytePath is a full-stack learning assistant that tracks student roster data, top
 - `sample-data/` — example CSVs for roster uploads
 
 ## System Diagram
+![System diagram showing users hitting the React/TypeScript frontend, which calls the Flask API backed by SQLite](docs/system-diagram.svg)
+
+Text fallback:
 ```
 ┌─────────────────┐     ┌──────────────────────┐     ┌───────────────────┐
 │  Frontend       │     │  Backend             │     │  Database         │
