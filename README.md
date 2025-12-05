@@ -19,6 +19,18 @@ BytePath is a full-stack learning assistant that tracks student roster data, top
 - `deploy/` — automation for local and EC2 deployments
 - `sample-data/` — example CSVs for roster uploads
 
+## System Diagram
+```
+┌─────────────────┐     ┌──────────────────────┐     ┌───────────────────┐
+│  Frontend       │     │  Backend             │     │  Database         │
+│  (React/Vite)   │◄───►│  (Flask API)         │◄───►│  (SQLite)         │
+│                 │     │  - Auth & Sessions   │     │  - users          │
+│                 │     │  - Topics/Visibility │     │  - topics         │
+│                 │     │  - Rosters & Uploads │     │  - progress       │
+│                 │     │  - Progress/Reports  │     │  - responses      │
+└─────────────────┘     └──────────────────────┘     └───────────────────┘
+```
+
 ## Prerequisites
 - Python 3.10+ with `venv`
 - Node.js 18+ and npm
