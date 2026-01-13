@@ -8,6 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/backend"
 FRONTEND_DIR="$PROJECT_ROOT"
+PORT=5000
 
 echo "=========================================="
 echo "BytePath Local Development Setup"
@@ -89,10 +90,10 @@ echo ""
 echo "Step 3: Starting backend server..."
 cd "$PROJECT_ROOT"  # Run from project root, not backend directory
 
-# Check if port 5000 is in use and kill existing backend processes
-if lsof -ti:5000 > /dev/null 2>&1; then
-    echo -e "${YELLOW}Port 5000 is in use. Checking for existing backend processes...${NC}"
-    EXISTING_PIDS=$(lsof -ti:5000)
+# Check if port PORT is in use and kill existing backend processes
+if lsof -ti:PORT > /dev/null 2>&1; then
+    echo -e "${YELLOW}Port PORT is in use. Checking for existing backend processes...${NC}"
+    EXISTING_PIDS=$(lsof -ti:PORT)
     for PID in $EXISTING_PIDS; do
         if ps -p $PID -o comm= | grep -q "Python\|python"; then
             echo "Stopping existing backend process (PID: $PID)..."
@@ -106,8 +107,8 @@ if lsof -ti:5000 > /dev/null 2>&1; then
     done
     sleep 1
     # Check again - if still in use, might be AirPlay or another service
-    if lsof -ti:5000 > /dev/null 2>&1; then
-        echo -e "${YELLOW}Warning: Port 5000 may still be in use by another service${NC}"
+    if lsof -ti:PORT > /dev/null 2>&1; then
+        echo -e "${YELLOW}Warning: Port PORT may still be in use by another service${NC}"
         echo "If this fails, try disabling AirPlay Receiver in System Preferences"
     fi
 fi
@@ -131,7 +132,7 @@ sleep 2
 # Check if backend started successfully
 if ps -p $BACKEND_PID > /dev/null; then
     echo -e "${GREEN}Backend server started (PID: $BACKEND_PID)${NC}"
-    echo "  Backend API: http://localhost:5000"
+    echo "  Backend API: http://localhost:PORT"
     echo "  Logs: /tmp/bytepath-backend.log"
 else
     echo -e "${RED}ERROR: Backend server failed to start${NC}"
@@ -201,8 +202,8 @@ echo "=========================================="
 echo ""
 echo "Services:"
 echo "  Frontend: http://localhost:5173"
-echo "  Backend:  http://localhost:5000"
-echo "  API:      http://localhost:5000/api"
+echo "  Backend:  http://localhost:PORT"
+echo "  API:      http://localhost:PORT/api"
 echo ""
 echo "Logs:"
 echo "  Backend:  tail -f /tmp/bytepath-backend.log"
