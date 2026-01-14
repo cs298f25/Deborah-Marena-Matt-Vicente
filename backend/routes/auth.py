@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import secrets
+from urllib.parse import urlencode
+
+import flask
 from flask import Blueprint, jsonify, request, session, current_app
+from google_auth_oauthlib.flow import Flow
 
 from backend.models import User
 from backend.services.auth_service import AuthService
@@ -42,6 +47,82 @@ def profile():
         return jsonify({"error": "User not found"}), 404
 
     return jsonify(_serialise_user(user))
+
+
+@auth_bp.get("/google")
+def google_authorize():
+    """Build the Google OAuth authorization URL and redirect the user."""
+
+    client_id = current_app.config.get("GOOGLE_CLIENT_ID")
+    redirect_uri = current_app.config.get("GOOGLE_REDIRECT_URI")
+    scope = current_app.config.get("GOOGLE_OAUTH_SCOPE")
+
+    if not client_id or not redirect_uri:
+        return jsonify({"error": "Google OAuth not configured"}), 500
+
+    state = secrets.token_urlsafe(24)
+    session["google_oauth_state"] = state
+
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": scope,
+        "state": state,
+    }
+    authorize_url = "https://accounts.google.com/o/oauth2/v2/auth"
+    return flask.redirect(f"{authorize_url}?{urlencode(params)}")
+
+
+@auth_bp.get("/google/callback")
+def google_callback():
+    """Verify OAuth state and capture the authorization code."""
+
+    error = request.args.get("error")
+    if error:
+        return jsonify({"error": error}), 400
+
+    state = request.args.get("state")
+    expected_state = session.pop("google_oauth_state", None)
+    if not state or not expected_state or state != expected_state:
+        return jsonify({"error": "Invalid OAuth state"}), 400
+
+    code = request.args.get("code")
+    if not code:
+        return jsonify({"error": "Missing authorization code"}), 400
+
+    scopes = (current_app.config.get("GOOGLE_OAUTH_SCOPE") or "").split()
+    client_secrets_file = current_app.config.get("GOOGLE_CLIENT_SECRETS_FILE")
+    redirect_uri = current_app.config.get("GOOGLE_REDIRECT_URI")
+
+    flow = Flow.from_client_secrets_file(
+        client_secrets_file,
+        scopes=scopes,
+        state=expected_state,
+    )
+    flow.redirect_uri = redirect_uri
+    flow.fetch_token(code=code)
+
+    credentials = flow.credentials
+    session["google_credentials"] = {
+        "token": credentials.token,
+        "refresh_token": credentials.refresh_token,
+        "granted_scopes": list(credentials.granted_scopes or []),
+        "expires_at": credentials.expiry.isoformat() if credentials.expiry else None,
+    }
+
+    return flask.redirect(flask.url_for("auth.google_complete"))
+
+
+@auth_bp.get("/google/complete")
+def google_complete():
+    """Return the authorization code without exposing it in the URL."""
+
+    credentials = session.get("google_credentials")
+    if not credentials:
+        return jsonify({"error": "No OAuth credentials available"}), 400
+
+    return jsonify({"message": "OAuth tokens stored", "scopes": credentials.get("granted_scopes", [])})
 
 
 def _serialise_user(user: User) -> dict:

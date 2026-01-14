@@ -160,3 +160,6 @@ instance/
 bytepath-backend/instance/
 *.db
 *.sqlite3
+
+# Google credentials
+backend/credentials/

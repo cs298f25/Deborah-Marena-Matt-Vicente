@@ -15,6 +15,19 @@ class Config:
         "CORS_ORIGINS", "http://localhost:5173"
     ).split(",")
     SECRET_KEY = os.environ.get("BYTEPATH_SECRET_KEY", "dev-secret-key-change-me")
+    GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+    GOOGLE_REDIRECT_URI = os.environ.get(
+        "GOOGLE_REDIRECT_URI",
+        "http://localhost:5000/api/auth/google/callback",
+    )
+    GOOGLE_OAUTH_SCOPE = os.environ.get(
+        "GOOGLE_OAUTH_SCOPE",
+        "openid email profile",
+    )
+    GOOGLE_CLIENT_SECRETS_FILE = os.environ.get(
+        "GOOGLE_CLIENT_SECRETS_FILE",
+        os.path.join(BASE_DIR, "credentials", "client_secret.json"),
+    )
 
 
 class DevelopmentConfig(Config):
@@ -50,4 +63,3 @@ def get_config(config_name: Optional[str] = None) -> Type[Config]:
         return DevelopmentConfig
 
     return config_by_name.get(config_name.lower(), DevelopmentConfig)
-
