@@ -90,7 +90,8 @@ def google_callback():
 
     error = request.args.get("error")
     if error:
-        return jsonify({"error": error}), 400
+        frontend_url = current_app.config.get("FRONTEND_URL", "http://localhost:5173")
+        return flask.redirect(frontend_url)
 
     state = request.args.get("state")
     expected_state = session.pop("google_oauth_state", None)
