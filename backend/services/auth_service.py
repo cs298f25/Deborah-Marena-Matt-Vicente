@@ -12,7 +12,7 @@ class AuthService:
     """Service encapsulating authentication-related operations."""
 
     # List of emails that should be assigned instructor role
-    INSTRUCTOR_EMAILS = {"bush@moravian.edu"}
+    INSTRUCTOR_EMAILS = {"bushj@moravian.edu"}
 
     @staticmethod
     def login_or_create_user(email: str, display_name: Optional[str] = None) -> User:
