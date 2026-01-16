@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import secrets
 from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 import flask
 from flask import Blueprint, jsonify, request, session, current_app
@@ -47,6 +49,14 @@ def profile():
         return jsonify({"error": "User not found"}), 404
 
     return jsonify(_serialise_user(user))
+
+
+@auth_bp.post("/logout")
+def logout():
+    """Clear the current session."""
+
+    session.clear()
+    return jsonify({"message": "Logged out"})
 
 
 @auth_bp.get("/google")
@@ -111,7 +121,23 @@ def google_callback():
         "expires_at": credentials.expiry.isoformat() if credentials.expiry else None,
     }
 
-    return flask.redirect(flask.url_for("auth.google_complete"))
+    userinfo = _fetch_google_userinfo(credentials.token)
+    if "error" in userinfo:
+        return jsonify(userinfo), 400
+
+    email = userinfo.get("email")
+    if not email:
+        return jsonify({"error": "Email not available from Google"}), 400
+    display_name = userinfo.get("name") or " ".join(
+        part for part in [userinfo.get("given_name"), userinfo.get("family_name")] if part
+    ).strip() or None
+
+    service = get_auth_service()
+    user = service.login_or_create_user(email, display_name=display_name)
+    session["user_id"] = user.id
+
+    frontend_url = current_app.config.get("FRONTEND_URL", "http://localhost:5173")
+    return flask.redirect(frontend_url)
 
 
 @auth_bp.get("/google/complete")
@@ -122,7 +148,16 @@ def google_complete():
     if not credentials:
         return jsonify({"error": "No OAuth credentials available"}), 400
 
-    return jsonify({"message": "OAuth tokens stored", "scopes": credentials.get("granted_scopes", [])})
+    granted_scopes = credentials.get("granted_scopes", [])
+    scope_status = check_granted_scopes(granted_scopes or [])
+
+    return jsonify(
+        {
+            "message": "OAuth tokens stored",
+            "granted_scopes": granted_scopes,
+            "scope_status": scope_status,
+        }
+    )
 
 
 def _serialise_user(user: User) -> dict:
@@ -132,3 +167,24 @@ def _serialise_user(user: User) -> dict:
         "name": user.name,
         "role": user.role,
     }
+
+
+def check_granted_scopes(granted_scopes: list[str]) -> dict:
+    scope_set = set(granted_scopes)
+    return {
+        "userinfo_email": "https://www.googleapis.com/auth/userinfo.email" in scope_set,
+        "userinfo_profile": "https://www.googleapis.com/auth/userinfo.profile" in scope_set,
+        "openid": "openid" in scope_set,
+    }
+
+
+def _fetch_google_userinfo(token: str) -> dict:
+    request_obj = Request(
+        "https://openidconnect.googleapis.com/v1/userinfo",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    try:
+        with urlopen(request_obj, timeout=10) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except Exception as exc:  # pragma: no cover - network errors
+        return {"error": "Failed to fetch user info", "details": str(exc)}

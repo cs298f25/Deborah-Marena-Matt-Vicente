@@ -9,11 +9,19 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/backend"
 FRONTEND_DIR="$PROJECT_ROOT"
 PORT=5000
+ENV_FILE="$PROJECT_ROOT/.env"
 
 echo "=========================================="
 echo "BytePath Local Development Setup"
 echo "=========================================="
 echo ""
+
+# Load local environment overrides if present.
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    source "$ENV_FILE"
+    set +a
+fi
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -214,4 +222,3 @@ echo ""
 
 # Wait for user interrupt
 wait
-

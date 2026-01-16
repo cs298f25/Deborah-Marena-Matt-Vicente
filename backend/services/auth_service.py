@@ -15,7 +15,7 @@ class AuthService:
     INSTRUCTOR_EMAILS = {"bush@moravian.edu"}
 
     @staticmethod
-    def login_or_create_user(email: str) -> User:
+    def login_or_create_user(email: str, display_name: Optional[str] = None) -> User:
         email_lower = email.lower()
 
         roster_entry = (
@@ -41,7 +41,7 @@ class AuthService:
         )
 
         if not user:
-            name = preferred_name or email.split("@")[0].replace(".", " ").title()
+            name = preferred_name or display_name or email.split("@")[0].replace(".", " ").title()
             user = user_repository.create_user(email=email, name=name, role=desired_role)
             db.session.commit()
         else:
@@ -53,6 +53,8 @@ class AuthService:
 
             if roster_entry and preferred_name and user.name != preferred_name:
                 user.name = preferred_name
+            elif not roster_entry and display_name and user.name != display_name:
+                user.name = display_name
 
             if db.session.is_modified(user):
                 db.session.commit()

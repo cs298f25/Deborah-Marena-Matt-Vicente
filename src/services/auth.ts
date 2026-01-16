@@ -27,7 +27,12 @@ export const authService = {
     return userStr ? JSON.parse(userStr) : null;
   },
 
-  logout(): void {
+  async logout(): Promise<void> {
+    try {
+      await api.post('auth/logout');
+    } catch (error) {
+      console.error('Failed to clear server session:', error);
+    }
     localStorage.removeItem('currentUser');
     localStorage.removeItem('authToken');
   },

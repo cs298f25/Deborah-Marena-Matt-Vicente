@@ -22,12 +22,13 @@ class Config:
     )
     GOOGLE_OAUTH_SCOPE = os.environ.get(
         "GOOGLE_OAUTH_SCOPE",
-        "openid email profile",
+        "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid",
     )
     GOOGLE_CLIENT_SECRETS_FILE = os.environ.get(
         "GOOGLE_CLIENT_SECRETS_FILE",
         os.path.join(BASE_DIR, "credentials", "client_secret.json"),
     )
+    FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 
 class DevelopmentConfig(Config):

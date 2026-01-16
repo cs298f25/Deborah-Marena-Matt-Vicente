@@ -192,8 +192,8 @@ function App() {
     setMode('learning');
   };
 
-  const handleLogout = () => {
-    authService.logout();
+  const handleLogout = async () => {
+    await authService.logout();
     localStorage.removeItem('completedTopics');
     resetState();
     setCurrentUser(null);
