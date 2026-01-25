@@ -67,6 +67,7 @@ function App() {
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const [theme, setThemeState] = useState<'light' | 'dark'>(getThemePreference());
   const isInstructor = currentUser?.role === 'instructor';
+  const [instructorPractice, setInstructorPractice] = useState(false);
   const clearUrlHash = () => {
     const { pathname, search } = window.location;
     window.history.replaceState(null, '', `${pathname}${search}`);
@@ -169,16 +170,23 @@ function App() {
   useEffect(() => {
     if (isInstructor) {
       setCurrentScreen('dashboard');
+      setInstructorPractice(false);
     }
   }, [isInstructor]);
 
-  // Prevent instructors from landing on student-only screens (welcome/questions).
+  // Prevent instructors from landing on student-only screens unless they enable practice mode.
   useEffect(() => {
-    if (isInstructor && currentScreen !== 'dashboard' && currentScreen !== 'students') {
+    if (!isInstructor) return;
+
+    const allowedScreens = instructorPractice
+      ? new Set(['dashboard', 'students', 'welcome', 'question', 'locked-topic'])
+      : new Set(['dashboard', 'students']);
+
+    if (!allowedScreens.has(currentScreen)) {
       setCurrentScreen('dashboard');
       clearUrlHash();
     }
-  }, [isInstructor, currentScreen]);
+  }, [isInstructor, currentScreen, instructorPractice]);
 
   const resetState = () => {
     setCurrentScreen('welcome');
@@ -197,6 +205,7 @@ function App() {
     localStorage.removeItem('completedTopics');
     resetState();
     setCurrentUser(null);
+    setInstructorPractice(false);
   };
 
   // Hydrate server-side progress after login so completion follows users across browsers.
@@ -230,8 +239,10 @@ function App() {
       return;
     }
     
+    const canBypassLocks = isInstructor;
+
     // Check if topic is accessible
-    if (!topic.isAccessible(completedTopics)) {
+    if (!canBypassLocks && !topic.isAccessible(completedTopics)) {
       // Show locked topic screen
       setCurrentTopic(topic);
       setCurrentScreen('locked-topic');
@@ -408,7 +419,7 @@ function App() {
           <tr><td className="subtitle">Learning with Small Python Snippets</td></tr>
         </tbody></table>
         <div className="header-actions">
-          {!isInstructor && (
+          {(!isInstructor || (instructorPractice && currentScreen !== 'students')) && (
             <div className="mode-toggle">
               <button 
                 className={`toggle-button ${mode === 'learning' ? 'active' : ''}`}
@@ -435,12 +446,27 @@ function App() {
                 Students
               </button>
             )}
+            {isInstructor && (
+              <button
+                onClick={() => {
+                  setInstructorPractice(true);
+                  setCurrentScreen('welcome');
+                }}
+                className={`dashboard-button ${instructorPractice && currentScreen !== 'dashboard' && currentScreen !== 'students' ? 'active' : ''}`}
+              >
+                Practice
+              </button>
+            )}
             <button
               onClick={() => {
                 if (!isInstructor && currentScreen === 'dashboard') {
                   setCurrentScreen('welcome'); 
                 } else {
                   setCurrentScreen('dashboard');
+                  if (isInstructor) {
+                    setInstructorPractice(false);
+                    clearUrlHash();
+                  }
                 }
               }}
               className={`dashboard-button ${currentScreen === 'dashboard' ? 'active' : ''}`}
@@ -527,7 +553,7 @@ function App() {
                             const completedSubtopics = subtopics.filter(subtopic => subtopic.completed).length;
                             const percentage = Math.round((completedSubtopics / subtopics.length) * 100);
                             
-                            const accessible = subItem.isAccessible(completedTopics);
+                            const accessible = isInstructor || subItem.isAccessible(completedTopics);
                             const status = completedTopics.has(subItem.id) ? 'completed' : 
                                           completedSubtopics > 0 ? 'in-progress' : 
                                           accessible ? 'available' : 'locked';
@@ -569,7 +595,7 @@ function App() {
                 const completedSubtopics = subtopics.filter(subtopic => subtopic.completed).length;
                 const percentage = Math.round((completedSubtopics / subtopics.length) * 100);
                 
-                const accessible = item.isAccessible(completedTopics);
+                const accessible = isInstructor || item.isAccessible(completedTopics);
                 const status = completedTopics.has(item.id) ? 'completed' : 
                               completedSubtopics > 0 ? 'in-progress' : 
                               accessible ? 'available' : 'locked';
