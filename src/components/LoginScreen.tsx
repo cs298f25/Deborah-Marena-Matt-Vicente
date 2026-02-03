@@ -11,6 +11,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 
   useEffect(() => {
     let isMounted = true;
@@ -59,25 +60,27 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         <p className="login-subtitle">Python Learning Platform</p>
 
         <form onSubmit={handleSubmit} className="login-form">
+          {isLocalhost && (
+            <>
+              <input
+                type="email"
+                placeholder="Enter your Moravian email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={loading}
+                className="login-input"
+              />
 
-          <input
-            type="email"
-            placeholder="Enter your Moravian email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={loading}
-            className="login-input"
-          />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="login-button"
-          >
-          
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="login-button"
+              >
+                {loading ? 'Logging in...' : 'Login'}
+              </button>
+            </>
+          )}
           <button
             type="button"
             disabled={loading}
