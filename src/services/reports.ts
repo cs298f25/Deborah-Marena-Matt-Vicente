@@ -66,6 +66,48 @@ export interface ClassOverview {
   }>;
 }
 
+export interface TopicReport {
+  topic: string;
+  topic_name: string;
+  overall_stats: {
+    total_students: number;
+    students_started: number;
+    students_completed: number;
+    total_attempts: number;
+    avg_accuracy: number;
+    avg_time_per_question: number;
+  };
+  subtopic_difficulty: Array<{
+    subtopic_type: string;
+    attempts: number;
+    unique_students: number;
+    success_rate: number;
+    avg_time: number;
+    difficulty_rating: string;
+  }>;
+  most_missed_questions: Array<{
+    question_code: string;
+    subtopic_type: string;
+    attempts: number;
+    success_rate: number;
+  }>;
+}
+
+export interface QuestionAnalyticsResponse {
+  topic: string;
+  analytics: Array<{
+    question_code: string;
+    subtopic_type: string;
+    times_shown: number;
+    correct_count: number;
+    incorrect_count: number;
+    skipped_count: number;
+    success_rate: number;
+    avg_time_spent: number;
+    students_who_saw: number;
+  }>;
+}
+
 export const reportsService = {
   async getStudentReport(studentId: number): Promise<StudentReport> {
     const response = await api.get(`reports/student/${studentId}`);
@@ -77,8 +119,14 @@ export const reportsService = {
     return response.data;
   },
 
-  async getTopicReport(topicId: string): Promise<unknown> {
+  async getTopicReport(topicId: string): Promise<TopicReport> {
     const response = await api.get(`reports/topic/${topicId}`);
+    return response.data;
+  },
+
+  async getQuestionAnalytics(topicId: string, subtopicType?: string): Promise<QuestionAnalyticsResponse> {
+    const params = subtopicType ? { subtopic_type: subtopicType } : undefined;
+    const response = await api.get(`reports/question/${topicId}/analytics`, { params });
     return response.data;
   },
 };

@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import Button from '../components/ui/Button';
-import { reportsService, type ClassOverview, type StudentReport } from '../services/reports';
+import {
+  reportsService,
+  type ClassOverview,
+  type StudentReport,
+  type TopicReport,
+  type QuestionAnalyticsResponse,
+} from '../services/reports';
 import './InstructorDashboard.css';
 
 type DifficultyLevel = 'very-hard' | 'hard' | 'medium' | 'easy';
@@ -21,19 +27,20 @@ const createDownload = (data: unknown, filename: string) => {
   URL.revokeObjectURL(link.href);
 };
 
-const parseLocalDate = (dateString: string): Date => {
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year || 0, (month || 1) - 1, day || 1);
-};
-
 export default function InstructorDashboard() {
   const [classOverview, setClassOverview] = useState<ClassOverview | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [rosterSearchTerm, setRosterSearchTerm] = useState('');
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [showRoster, setShowRoster] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<ClassOverview['topics_overview'][number] | null>(null);
+  const [topicReport, setTopicReport] = useState<TopicReport | null>(null);
+  const [topicQuestionAnalytics, setTopicQuestionAnalytics] = useState<QuestionAnalyticsResponse | null>(null);
+  const [topicLoading, setTopicLoading] = useState(false);
+  const [topicError, setTopicError] = useState<string | null>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<QuestionAnalyticsResponse['analytics'][number] | null>(null);
+  const [selectedSubtopic, setSelectedSubtopic] = useState<string | null>(null);
 
   useEffect(() => {
     loadClassOverview();
@@ -69,6 +76,16 @@ export default function InstructorDashboard() {
   };
 
   const openRosterModal = () => setShowRoster(true);
+  const closeTopicModal = () => {
+    setSelectedTopic(null);
+    setTopicReport(null);
+    setTopicQuestionAnalytics(null);
+    setTopicError(null);
+    setTopicLoading(false);
+    setSelectedQuestion(null);
+    setSelectedSubtopic(null);
+  };
+  const closeQuestionModal = () => setSelectedQuestion(null);
   const handleRosterKey = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
@@ -76,54 +93,16 @@ export default function InstructorDashboard() {
     }
   };
 
-  const recentActivity = useMemo(() => {
-    if (!classOverview) return [];
-
-    const activityMap = new Map(
-      (classOverview.recent_activity ?? []).map((day) => [day.date, day]),
-    );
-
-    const filledWindow: NonNullable<ClassOverview['recent_activity']>[number][] = [];
-    for (let offset = 6; offset >= 0; offset -= 1) {
-      const date = new Date();
-      date.setHours(0, 0, 0, 0);
-      date.setDate(date.getDate() - offset);
-      const key = [
-        date.getFullYear(),
-        String(date.getMonth() + 1).padStart(2, '0'),
-        String(date.getDate()).padStart(2, '0'),
-      ].join('-');
-      const entry =
-        activityMap.get(key) ?? { date: key, questions_answered: 0, active_students: 0 };
-      filledWindow.push(entry);
-    }
-
-    return filledWindow;
-  }, [classOverview]);
-  const maxQuestionsInActivity =
-    recentActivity.length > 0
-      ? Math.max(...recentActivity.map((day) => day.questions_answered))
-      : 0;
-
   const topPerformers = classOverview?.top_performers ?? [];
-  const strugglingStudents = classOverview?.struggling_students ?? [];
   const topicsOverview = classOverview?.topics_overview ?? [];
   const rosteredStudents = classOverview?.rostered_students ?? [];
-  const normalizedSearch = searchTerm.trim().toLowerCase();
-
-  const filteredTopPerformers = useMemo(() => {
-    if (!normalizedSearch) return topPerformers;
-    return topPerformers.filter((student) =>
-      student.student_name.toLowerCase().includes(normalizedSearch),
-    );
-  }, [topPerformers, normalizedSearch]);
-
-  const filteredStrugglers = useMemo(() => {
-    if (!normalizedSearch) return strugglingStudents;
-    return strugglingStudents.filter((student) =>
-      student.student_name.toLowerCase().includes(normalizedSearch),
-    );
-  }, [strugglingStudents, normalizedSearch]);
+  const subtopicQuestions = useMemo(() => {
+    if (!topicQuestionAnalytics || !selectedSubtopic) return [];
+    return topicQuestionAnalytics.analytics
+      .filter((question) => question.subtopic_type === selectedSubtopic)
+      .slice()
+      .sort((a, b) => a.success_rate - b.success_rate);
+  }, [topicQuestionAnalytics, selectedSubtopic]);
 
   const normalizedRosterSearch = rosterSearchTerm.trim().toLowerCase();
   const rosterMatches = useMemo(() => {
@@ -141,6 +120,36 @@ export default function InstructorDashboard() {
       return;
     }
     viewStudentReport(studentId);
+  };
+
+  const openTopicModal = async (topic: ClassOverview['topics_overview'][number]) => {
+    setSelectedTopic(topic);
+    setTopicError(null);
+    setTopicLoading(true);
+    setSelectedSubtopic(null);
+    try {
+      const [report, analytics] = await Promise.all([
+        reportsService.getTopicReport(topic.topic),
+        reportsService.getQuestionAnalytics(topic.topic),
+      ]);
+      setTopicReport(report);
+      setTopicQuestionAnalytics(analytics);
+    } catch (error) {
+      console.error('Failed to load topic analytics:', error);
+      setTopicError('Unable to load topic analytics right now.');
+    } finally {
+      setTopicLoading(false);
+    }
+  };
+
+  const handleTopicKey = (
+    event: KeyboardEvent<HTMLDivElement>,
+    topic: ClassOverview['topics_overview'][number],
+  ) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openTopicModal(topic);
+    }
   };
 
   if (loading) {
@@ -163,13 +172,6 @@ export default function InstructorDashboard() {
           <div>
             <h1>{selectedStudent.student_name}</h1>
             <p className="student-email">{selectedStudent.student_email}</p>
-          </div>
-          <div className="student-detail-badge">
-            {selectedStudent.overall_stats.overall_accuracy >= 80
-              ? 'Performance: Excellent'
-              : selectedStudent.overall_stats.overall_accuracy >= 60
-                ? 'Performance: On Track'
-                : 'Performance: Needs Support'}
           </div>
         </div>
 
@@ -327,6 +329,179 @@ export default function InstructorDashboard() {
         </div>
       )}
 
+      {selectedTopic && (
+        <div
+          className="topic-analytics-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Topic analytics"
+          onClick={closeTopicModal}
+        >
+          <div className="topic-analytics-modal__content" onClick={(event) => event.stopPropagation()}>
+            <div className="topic-analytics-modal__header">
+              <div>
+                <p className="topic-analytics-modal__label">Topic Analytics</p>
+                <h2>{selectedTopic.topic_name}</h2>
+              </div>
+              <Button
+                className="topic-analytics-modal__close"
+                variant="muted"
+                size="small"
+                onClick={closeTopicModal}
+              >
+                Close
+              </Button>
+            </div>
+
+            <div className="topic-analytics-modal__body">
+              {topicLoading && <div className="topic-analytics-loading">Loading topic analytics…</div>}
+              {!topicLoading && topicError && <div className="topic-analytics-error">{topicError}</div>}
+
+              {!topicLoading && !topicError && topicReport && (
+                <>
+                  <div className="topic-analytics-grid">
+                    <div className="topic-analytics-card">
+                      <p>Total Students</p>
+                      <strong>{topicReport.overall_stats.total_students}</strong>
+                    </div>
+                    <div className="topic-analytics-card">
+                      <p>Started</p>
+                      <strong>{topicReport.overall_stats.students_started}</strong>
+                    </div>
+                    <div className="topic-analytics-card">
+                      <p>Completed</p>
+                      <strong>{topicReport.overall_stats.students_completed}</strong>
+                    </div>
+                    <div className="topic-analytics-card">
+                      <p>Avg Accuracy</p>
+                      <strong>{topicReport.overall_stats.avg_accuracy.toFixed(0)}%</strong>
+                    </div>
+                    <div className="topic-analytics-card">
+                      <p>Avg Time</p>
+                      <strong>{topicReport.overall_stats.avg_time_per_question.toFixed(0)}s</strong>
+                    </div>
+                    <div className="topic-analytics-card">
+                      <p>Total Attempts</p>
+                      <strong>{topicReport.overall_stats.total_attempts}</strong>
+                    </div>
+                  </div>
+
+                  <div className="topic-analytics-section">
+                    <h3>Subtopics Ranked by Difficulty</h3>
+                    {topicReport.subtopic_difficulty.length === 0 ? (
+                      <p className="topic-analytics-empty">No subtopic analytics available yet.</p>
+                    ) : (
+                      <div className="ranked-subtopics-list">
+                        {topicReport.subtopic_difficulty
+                          .slice()
+                          .sort((a, b) => a.success_rate - b.success_rate)
+                          .map((subtopic, index) => {
+                            const isSelected = selectedSubtopic === subtopic.subtopic_type;
+                            return (
+                              <div
+                                key={subtopic.subtopic_type}
+                                className={`ranked-subtopic-row ${isSelected ? 'ranked-subtopic-row--active' : ''}`}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setSelectedSubtopic(subtopic.subtopic_type)}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    setSelectedSubtopic(subtopic.subtopic_type);
+                                  }
+                                }}
+                              >
+                                <span className="ranked-subtopic-rank">#{index + 1}</span>
+                                <span className="ranked-subtopic-name">{subtopic.subtopic_type}</span>
+                                <span className="ranked-subtopic-metric">
+                                  {subtopic.success_rate.toFixed(0)}% success
+                                </span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="topic-analytics-section">
+                    <h3>Questions for Selected Subtopic</h3>
+                    {!selectedSubtopic ? (
+                      <p className="topic-analytics-empty">Select a subtopic to view its questions.</p>
+                    ) : subtopicQuestions.length === 0 ? (
+                      <p className="topic-analytics-empty">No question analytics available for this subtopic.</p>
+                    ) : (
+                      <div className="topic-analytics-list">
+                        {subtopicQuestions.map((question, index) => (
+                          <div
+                            key={`${question.question_code}-${question.subtopic_type}-${index}`}
+                            className="analytics-list-row"
+                            title={`${question.question_code} · ${question.subtopic_type}`}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setSelectedQuestion(question)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                setSelectedQuestion(question);
+                              }
+                            }}
+                          >
+                            <span className="analytics-list-rank">#{index + 1}</span>
+                            <span className="analytics-list-subtopic">{question.subtopic_type}</span>
+                            <span className="analytics-list-metric">
+                              {question.success_rate.toFixed(0)}% success
+                            </span>
+                            <span className="analytics-list-metric">
+                              {question.times_shown} attempts
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedQuestion && (
+        <div
+          className="question-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Question details"
+          onClick={closeQuestionModal}
+        >
+          <div className="question-modal__content" onClick={(event) => event.stopPropagation()}>
+            <div className="question-modal__header">
+              <div>
+                <p className="question-modal__label">Question Details</p>
+                <h3>{selectedQuestion.subtopic_type}</h3>
+              </div>
+              <Button
+                className="question-modal__close"
+                variant="muted"
+                size="small"
+                onClick={closeQuestionModal}
+              >
+                Close
+              </Button>
+            </div>
+            <div className="question-modal__body">
+              <div className="question-modal__stats">
+                <span>{selectedQuestion.times_shown} attempts</span>
+                <span>{selectedQuestion.success_rate.toFixed(0)}% success</span>
+                <span>{selectedQuestion.avg_time_spent.toFixed(0)}s avg time</span>
+              </div>
+              <pre className="question-modal__code">{selectedQuestion.question_code}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="dashboard-header">
         <div className="dashboard-header__content">
           <h1>Class Analytics</h1>
@@ -385,32 +560,6 @@ export default function InstructorDashboard() {
           </div>
         </div>
 
-        {recentActivity.length > 0 && (
-          <div className="activity-chart">
-            <h3>Recent Activity (Last 7 Days)</h3>
-            <div className="chart-container">
-              {recentActivity.map((day) => {
-                const height =
-                  maxQuestionsInActivity > 0
-                    ? Math.max((day.questions_answered / maxQuestionsInActivity) * 100, 5)
-                    : 5;
-                return (
-                  <div key={day.date} className="chart-bar">
-                    <div
-                      className="chart-bar__fill"
-                      style={{ height: `${height}%` }}
-                      title={`${day.questions_answered} questions · ${day.active_students} students`}
-                    />
-                    <div className="chart-bar__label">
-                      {parseLocalDate(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
-                    </div>
-                    <div className="chart-bar__value">{day.questions_answered}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </section>
 
       <section className="dashboard-section">
@@ -429,6 +578,10 @@ export default function InstructorDashboard() {
                 <div
                   key={topic.topic}
                   className={`topic-card topic-card--${difficulty.level}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openTopicModal(topic)}
+                  onKeyDown={(event) => handleTopicKey(event, topic)}
                 >
                   <div className="topic-card__header">
                     <h3>{topic.topic_name}</h3>
@@ -511,78 +664,7 @@ export default function InstructorDashboard() {
         </div>
       </section>
 
-      <section className="dashboard-section">
-        <div className="section-header">
-          <h2>Student Performance</h2>
-          <input
-            type="search"
-            placeholder="Search students…"
-            className="search-input"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-        </div>
-
-        <div className="performance-categories">
-          <div className="performance-category">
-            <h3>Top Performers</h3>
-            <div className="students-table">
-              {filteredTopPerformers.length === 0 ? (
-                <div className="students-table__empty">No matches found.</div>
-              ) : (
-                filteredTopPerformers.map((student, index) => (
-                  <div
-                    key={student.student_id}
-                    className="student-row student-row--excellent"
-                    onClick={() => viewStudentReport(student.student_id)}
-                  >
-                    <div className="student-row__rank">#{index + 1}</div>
-                    <div className="student-row__info">
-                      <h4>{student.student_name}</h4>
-                      <p>{student.questions_answered} questions answered</p>
-                    </div>
-                    <div className="student-row__metrics">
-                      <div className="metric-pill metric-pill--success">
-                        {student.accuracy.toFixed(1)}% accuracy
-                      </div>
-                    </div>
-                    <div className="student-row__action">View</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="performance-category">
-            <h3>Needs Attention</h3>
-            <div className="students-table">
-              {filteredStrugglers.length === 0 ? (
-                <div className="students-table__empty">No matches found.</div>
-              ) : (
-                filteredStrugglers.map((student) => (
-                  <div
-                    key={student.student_id}
-                    className="student-row student-row--warning"
-                    onClick={() => viewStudentReport(student.student_id)}
-                  >
-                    <div className="student-row__rank">!</div>
-                    <div className="student-row__info">
-                      <h4>{student.student_name}</h4>
-                      <p>{student.questions_answered} questions answered</p>
-                    </div>
-                    <div className="student-row__metrics">
-                      <div className="metric-pill metric-pill--warning">
-                        {student.accuracy.toFixed(1)}% accuracy
-                      </div>
-                    </div>
-                    <div className="student-row__action">Review</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+      <section className="dashboard-section dashboard-section--spacer" aria-hidden="true" />
     </div>
   );
 }

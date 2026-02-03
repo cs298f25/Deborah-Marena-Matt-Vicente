@@ -214,11 +214,44 @@ function App() {
 
     (async () => {
       try {
-        const progress = await progressService.getUserProgress(currentUser.id);
-        const completed = progress
+        const [progress, responses] = await Promise.all([
+          progressService.getUserProgress(currentUser.id),
+          responsesService.getStudentResponses(currentUser.id),
+        ]);
+
+        const completedFromProgress = progress
           .filter(p => p.total_subtopics > 0 && p.subtopics_completed >= p.total_subtopics)
           .map(p => p.topic);
 
+        const latestBySubtopic = new Map<string, typeof responses[number]>();
+        responses.forEach((response) => {
+          const key = `${response.topic}::${response.subtopic_type}`;
+          const existing = latestBySubtopic.get(key);
+          if (!existing || new Date(response.attempted_at) > new Date(existing.attempted_at)) {
+            latestBySubtopic.set(key, response);
+          }
+        });
+
+        // Restore subtopic-level completion based on the latest response per subtopic.
+        allTopics.forEach((topic) => {
+          topic.subtopics.forEach((subtopic) => {
+            const key = `${topic.id}::${subtopic.constructor.name}`;
+            const response = latestBySubtopic.get(key);
+            if (response) {
+              subtopic.completed = response.is_correct;
+              subtopic.incorrectLastTime = !response.is_correct;
+            } else {
+              subtopic.completed = false;
+              subtopic.incorrectLastTime = false;
+            }
+          });
+        });
+
+        const completedFromResponses = allTopics
+          .filter(topic => topic.subtopics.every(subtopic => subtopic.completed))
+          .map(topic => topic.id);
+
+        const completed = [...completedFromProgress, ...completedFromResponses];
         if (completed.length) {
           setCompletedTopics(prev => new Set([...prev, ...completed]));
         }
@@ -226,7 +259,7 @@ function App() {
         console.error('Failed to load server progress:', error);
       }
     })();
-  }, [currentUser]);
+  }, [currentUser, allTopics]);
 
   if (!currentUser) {
     return <LoginScreen onLogin={(user) => setCurrentUser(user)} />;
