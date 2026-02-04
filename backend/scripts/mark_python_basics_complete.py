@@ -20,6 +20,19 @@ PYTHON_BASICS_TOPICS = [
     {"id": "basic-prints", "name": "Basic Printing", "total_subtopics": 9},
 ]
 
+
+def _ensure_topics_exist() -> None:
+    for topic in PYTHON_BASICS_TOPICS:
+        existing = topic_repository.get_by_id(topic["id"])
+        if existing:
+            continue
+        topic_repository.create_topic(
+            topic_id=topic["id"],
+            name=topic["name"],
+            is_visible=True,
+        )
+
+
 def _fetch_user_ids_for_roster(class_name: str | None) -> list[int]:
     query = (
         db.select(User.id)
