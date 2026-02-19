@@ -127,6 +127,7 @@ export class ForLoopNestingSumEachRowIndentIssue extends Subtopic {
     const [w, x, y, z, a] = ['data', 'row', 'value', 'totals', 'total'];
     const size = randIntNum(2, 4);
     const list = new Array(randIntNum(2, 4)).fill(0).map(() => randInts(1n, 5n, size));
+    const total = list.reduce((a, b) => a + b.reduce((a, b) => a + b, 0n), 0n);
     return createQuestion(`
       ${w} = ${toPyAtom(list)}
       ${z} = []
@@ -137,11 +138,8 @@ export class ForLoopNestingSumEachRowIndentIssue extends Subtopic {
       ${z}.append(${a})
       ${z}
       `, [
-        list.reduce((a, b) => a + b.reduce((a, b) => a + b, 0n), 0n),
+        total, [total], [],
         list.map(row => row.reduce((a, b) => a + b, 0n)),
-        list.map(row => row.reduce((a, b) => a + b, 0n) + 1n),
-        list.map(row => row.reduce((a, b) => a + b, 0n) + BigInt(row.length)),
-        list.map(row => row.reduce((a, b) => a + b, 0n) - BigInt(row.length)),
         list.map(row => row[0]),
         list.map(row => BigInt(row.length)),
         list.map(row => BigInt(row.length * size)),

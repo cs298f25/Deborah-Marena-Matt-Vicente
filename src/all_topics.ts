@@ -23,6 +23,9 @@ import { LIST_SLICING } from './topics/ListSlicing';
 import { LIST_NESTING } from './topics/ListNesting';
 import { TUPLES } from './topics/Tuples';
 
+import { DICT_BASICS } from './topics/DictionaryBasics';
+import { DICT_WITH_LOOPS } from './topics/DictionaryWithLoops';
+
 import { BASIC_FUNCTIONS } from './topics/BasicFunctions';
 import { FUNC_WITH_MULTIPLE_ARGS } from './topics/FuncWithMultipleArgs';
 import { FUNC_WITH_MULT_OR_NO_RETURN } from './topics/FuncWithMultOrNoReturn';
@@ -51,6 +54,7 @@ import { PRACTICE_04A_DIVISION_AND_CONDITIONS } from './topics/04a - Division an
 import { PRACTICE_04B_STRINGS } from './topics/04b - Strings.ts';
 import { PRACTICE_04B_LISTS } from './topics/04b - Lists.ts';
 import { PRACTICE_05A_LOOPS } from './topics/05a - Loops.ts';
+import { PRACTICE_05B_DICTS } from './topics/05b - Dicts.ts';
 
 import { QUIZ_3 } from './topics/Quiz3';
 import { QUIZ_4 } from './topics/Quiz4';
@@ -59,6 +63,7 @@ import { CONDITIONALS_MASTERY } from './topics/ConditionalsMastery';
 import { STRINGS_MASTERY } from './topics/StringsMastery';
 import { LIST_MASTERY } from './topics/ListMastery';
 import { LOOPS_MASTERY } from './topics/LoopsMastery';
+import { DICT_MASTERY } from './topics/DictMastery';
 
 
 //////////////////////////////////
@@ -93,6 +98,11 @@ const LIST_GROUP = new TopicGroup('lists', 'Lists', [
   LIST_SLICING,
   LIST_NESTING,
   TUPLES,
+]);
+
+const DICT_GROUP = new TopicGroup('dictionaries', 'Dictionaries', [
+  DICT_BASICS,
+  DICT_WITH_LOOPS,
 ]);
 
 const FUNCTIONS_GROUP = new TopicGroup('functions', 'Functions', [
@@ -130,6 +140,7 @@ const PRACTICE_GROUP = new TopicGroup('practice', 'Practice', [
   PRACTICE_04B_STRINGS,
   PRACTICE_04B_LISTS,
   PRACTICE_05A_LOOPS,
+  PRACTICE_05B_DICTS,
 ]);
 
 const QUIZ_GROUP = new TopicGroup('quiz-review', 'Quiz Review', [
@@ -140,6 +151,7 @@ const QUIZ_GROUP = new TopicGroup('quiz-review', 'Quiz Review', [
   STRINGS_MASTERY,
   LIST_MASTERY,
   LOOPS_MASTERY,
+  DICT_MASTERY,
 ]);
 
 
@@ -151,6 +163,7 @@ export const TOPICS: (Topic | TopicGroup)[] = [
   ARITHMETIC_GROUP,
   STRING_GROUP,
   LIST_GROUP,
+  DICT_GROUP,
   FUNCTIONS_GROUP,
   BRANCHING_GROUP,
   LOOPS_GROUP,

@@ -1,6 +1,7 @@
 import { Question, Subtopic, Topic, createQuestion } from '../topics';
 import { randVariable, randVars, randFunc, randChoice, STRINGS } from '../util';
 import { FUNC_WITH_MULTIPLE_ARGS } from './FuncWithMultipleArgs';
+import { BASIC_PRINTS } from './BasicPrints';
 
 class FuncWithPrint extends Subtopic {
     generateQuestion(): Question {
@@ -62,4 +63,4 @@ export const FUNC_WITH_PRINT: Topic = new Topic('func-with-print', 'Functions wi
   new FuncWithPrintReturn(),
   new FuncWithPrintAround(),
   new FuncWithPrintLastLine(),
-], [FUNC_WITH_MULTIPLE_ARGS]);
+], [FUNC_WITH_MULTIPLE_ARGS, BASIC_PRINTS]);
