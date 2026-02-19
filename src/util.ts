@@ -97,6 +97,8 @@ export function randChoices<T>(array: T[], n: number, unique: boolean = true): T
 }
 
 export const ASCII_LETTERS = [..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+export const ASCII_LOWER = [..."abcdefghijklmnopqrstuvwxyz"];
+export const ASCII_UPPER = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
 export const DIGITS = [..."0123456789"];
 export const STRINGS = ['hello', 'world', 'python', 'code', 'cat', 'dog', 'cow', 'pig', 'apple', 'banana', 'kiwi', 'mango', 'pear'];
 export const VARS = ['x', 'y', 'z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'm', 'n'];
