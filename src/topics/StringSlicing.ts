@@ -10,11 +10,11 @@ const STRINGS = [
     "Time Flies", "Why Me?", "Think Big", "Live Long", "Just Do It", "Good Grief",
 ];
 
-function toTuple(a: bigint | number): [string, number] { return [String(a), Number(a)]; }
-const DEFAULT_START = (s: string) => toTuple(randInt(2n, BigInt(s.indexOf(' ') - 1)));
-const DEFAULT_END = (s: string, start: number) => toTuple(randInt(BigInt(Math.max(start + 2, s.indexOf(' ') + 1)), BigInt(s.length - 2)));
+export function toTuple(a: bigint | number): [string, number] { return [String(a), Number(a)]; }
+export const DEFAULT_START = (s: string) => toTuple(randInt(2n, BigInt(s.indexOf(' ') - 1)));
+export const DEFAULT_END = (s: string, start: number) => toTuple(randInt(BigInt(Math.max(start + 2, s.indexOf(' ') + 1)), BigInt(s.length - 2)));
 
-function makeComment(s: string): string {
+export function makeComment(s: string): string {
   return '#    01234567890123456789'.slice(0, s.length+5);
 }
 
@@ -30,7 +30,7 @@ export class StringIndex1 extends Subtopic {
   }
 }
 
-abstract class StringSlicingBase extends Subtopic {
+export abstract class StringSlicingBase extends Subtopic {
   genQuestion(
     start: (s: string) => [string, number] = DEFAULT_START,
     end: (s: string, start: number, x: string) => [string, number] = DEFAULT_END
@@ -113,18 +113,6 @@ export class StringIndexLenMinus1 extends Subtopic {
   }
 }
 
-export class StringIndexNeg1 extends Subtopic {
-  generateQuestion(): Question {
-    const x = randVariable();
-    const a = randChoice(STRINGS);
-    return createQuestion(`
-      ${makeComment(a)}
-      ${x} = ${toPyStr(a)}
-      ${x}[-1]
-    `, [a[0], a[1], a[a.length-1], a[a.length-2]]);
-  }
-}
-
 export class StringIndexLenMinus2 extends Subtopic {
   generateQuestion(): Question {
     const x = randVariable();
@@ -137,51 +125,9 @@ export class StringIndexLenMinus2 extends Subtopic {
   }
 }
 
-export class StringIndexNeg2 extends Subtopic {
-  generateQuestion(): Question {
-    const x = randVariable();
-    const a = randChoice(STRINGS);
-    return createQuestion(`
-      ${makeComment(a)}
-      ${x} = ${toPyStr(a)}
-      ${x}[-2]
-    `, [a[0], a[1], a[a.length-1], a[a.length-2], a[a.length-3]]);
-  }
-}
-
-
 export class StringSlicingToLenMinus1 extends StringSlicingBase {
   generateQuestion(): Question {
     return this.genQuestion(DEFAULT_START, (s, _, x) => [`len(${x})-1`, s.length - 1]);
-  }
-}
-
-export class StringSlicingToNeg1 extends StringSlicingBase {
-  generateQuestion(): Question {
-    return this.genQuestion(DEFAULT_START, (s) => [`-1`, s.length - 1]);
-  }
-}
-
-export class StringSlicingFromNegToNeg extends StringSlicingBase {
-  generateQuestion(): Question {
-    return this.genQuestion(
-      (s) => {
-        const n = randIntNum(3, Math.min(6, s.length - 1));
-        return [`-${n}`, s.length - n];
-      },
-      (s) => [`-1`, s.length - 1]
-    );
-  }
-}
-
-export class StringSlicingFromNegToPos extends StringSlicingBase {
-  generateQuestion(): Question {
-    return this.genQuestion(
-      (s) => {
-        const n = randIntNum(3, Math.min(5, s.length - 2));
-        return [`-${n}`, s.length - n];
-      }
-    );
   }
 }
 
@@ -203,14 +149,8 @@ export class StringSlicingFromNoneToNone extends StringSlicingBase {
   }
 }
 
-export class StringSlicingFromNoneToNeg1 extends StringSlicingBase {
-  generateQuestion(): Question {
-    return this.genQuestion(() => ['', 0], (s) => ['-1', s.length - 1]);
-  }
-}
 
-
-export const STRING_SLICING = new Topic('string-slicing', 'String Slicing and Negative Indexing', [
+export const STRING_SLICING = new Topic('string-slicing', 'String Slicing', [
   new StringIndex1(),
   new StringSlicing(),
   new StringSlicingFrom0(),
@@ -219,15 +159,7 @@ export const STRING_SLICING = new Topic('string-slicing', 'String Slicing and Ne
   new StringSlicingMakeEmpty(),
   new StringSlicingChained(),
   new StringSlicingToLenMinus1(),
-  new StringIndexLenMinus1(),
-  new StringIndexNeg1(),
-  new StringIndexLenMinus2(),
-  new StringIndexNeg2(),
-  new StringSlicingToNeg1(),
-  new StringSlicingFromNegToNeg(),
-  new StringSlicingFromNegToPos(),
   new StringSlicingToNone(),
   new StringSlicingFromNone(),
   new StringSlicingFromNoneToNone(),
-  new StringSlicingFromNoneToNeg1(),
 ], [STRING_LENGTH, STRING_INDEX], {order: 'sequential'});

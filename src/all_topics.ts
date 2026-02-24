@@ -12,6 +12,7 @@ import { DIVISION } from './topics/Division';
 import { CONVERTING_AND_ROUNDING } from './topics/ConvertingAndRounding';
 
 import { STRING_SLICING } from './topics/StringSlicing';
+import { STRING_NEG_INDEX } from './topics/StringNegIndex';
 import { STRING_COMPARISONS } from './topics/StringComparisons';
 import { ESCAPE_SEQUENCES } from './topics/EscapeSequences';
 import { STRING_METHODS } from './topics/StringMethods';
@@ -86,6 +87,7 @@ const ARITHMETIC_GROUP = new TopicGroup('arithmetic', 'Arithmetic', [
 
 const STRING_GROUP = new TopicGroup('strings', 'Strings', [
   STRING_SLICING,
+  STRING_NEG_INDEX,
   STRING_COMPARISONS,
   ESCAPE_SEQUENCES,
   STRING_METHODS,

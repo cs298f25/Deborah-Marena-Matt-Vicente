@@ -11,7 +11,8 @@ import { STRING_METHODS, StringIsDigit, StringIsDigit2, StringIsDigit3, StringLo
 import { SPLITTING_AND_JOINING } from './SplittingAndJoining';
 import { F_STRINGS } from './FStrings';
 import { MEMBERSHIP_OPERATORS, CharInString } from './MembershipOperator';
-import { STRING_SLICING, StringIndexNeg1, StringSlicing, StringSlicingChained, StringSlicingFrom0 } from './StringSlicing';
+import { STRING_SLICING, StringSlicing, StringSlicingChained, StringSlicingFrom0 } from './StringSlicing';
+import { STRING_NEG_INDEX, StringIndexNeg1 } from './StringNegIndex';
 import { StringLenOfIndex } from './03a - Basic Reading';
 
 export class ConcatSlices extends Subtopic {
@@ -72,4 +73,4 @@ export const PRACTICE_04B_STRINGS: Topic = new Topic('practice-04b-strings', '04
   new StringIsDigit3(),
   new FancyFString(),
 ], [BASIC_ARITHMETIC, BASIC_VARIABLES, BASIC_PRINTS, STRING_LENGTH, STRING_CONCAT, STRING_INDEX,
-    STRING_SLICING, MEMBERSHIP_OPERATORS, STRING_METHODS, SPLITTING_AND_JOINING, F_STRINGS], {order: 'random'});
+    STRING_SLICING, STRING_NEG_INDEX, MEMBERSHIP_OPERATORS, STRING_METHODS, SPLITTING_AND_JOINING, F_STRINGS], {order: 'random'});

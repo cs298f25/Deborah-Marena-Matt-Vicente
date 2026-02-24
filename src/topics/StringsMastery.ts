@@ -9,6 +9,7 @@ import { STRING_LENGTH } from './StringLength';
 import { BASIC_PRINTS } from './BasicPrints';
 import { MEMBERSHIP_OPERATORS } from './MembershipOperator';
 import { STRING_SLICING } from './StringSlicing';
+import { STRING_NEG_INDEX } from './StringNegIndex';
 import { STRING_CONCAT } from './StringConcat';
 import { STRING_METHODS } from './StringMethods';
 import { SPLITTING_AND_JOINING } from './SplittingAndJoining';
@@ -60,7 +61,7 @@ class StringsMastery extends Topic {
       new StringsMastery_Long_2(),
     ], [
         BASIC_ARITHMETIC, BASIC_VARIABLES, BASIC_PRINTS, STRING_LENGTH, STRING_CONCAT, STRING_INDEX,
-        STRING_SLICING, MEMBERSHIP_OPERATORS, STRING_METHODS, SPLITTING_AND_JOINING, F_STRINGS,
+        STRING_SLICING, STRING_NEG_INDEX, MEMBERSHIP_OPERATORS, STRING_METHODS, SPLITTING_AND_JOINING, F_STRINGS,
     ], {order: 'sequential', sharedCode: code, forceQuiz: true});
     this.vars = vars;
     this.vals = vals;
