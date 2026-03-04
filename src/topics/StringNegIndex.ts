@@ -101,6 +101,6 @@ export const STRING_NEG_INDEX = new Topic('string-neg-index', 'String Negative I
   new StringSlicingFromNoneToNeg1(),
   new StringSlicingFromNegToNone(),
   new StringSlicingFromPosToNeg(),
-  new StringSlicingFromNegToNeg(),
-  new StringSlicingFromNegToPos(),
+  //new StringSlicingFromNegToNeg(),
+  //new StringSlicingFromNegToPos(),
 ], [STRING_LENGTH, STRING_INDEX, STRING_SLICING], {order: 'sequential'});
