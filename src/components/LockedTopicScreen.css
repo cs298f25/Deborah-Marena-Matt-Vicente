@@ -179,6 +179,52 @@
   opacity: 0.8;
 }
 
+:root:not([data-theme="dark"]) .locked-topic-content {
+  background: var(--bg-card);
+  border-color: var(--border-card);
+}
+
+:root:not([data-theme="dark"]) .locked-topic-header h2,
+:root:not([data-theme="dark"]) .requirements-section h3,
+:root:not([data-theme="dark"]) .completed-requirements h4,
+:root:not([data-theme="dark"]) .remaining-requirements h4,
+:root:not([data-theme="dark"]) .topic-name {
+  color: var(--text-primary);
+}
+
+:root:not([data-theme="dark"]) .locked-topic-description,
+:root:not([data-theme="dark"]) .no-requirements p,
+:root:not([data-theme="dark"]) .progress-text {
+  color: var(--text-secondary);
+}
+
+:root:not([data-theme="dark"]) .no-requirements,
+:root:not([data-theme="dark"]) .completed-requirements,
+:root:not([data-theme="dark"]) .remaining-requirements,
+:root:not([data-theme="dark"]) .topic-item {
+  background: var(--bg-sidebar-item);
+  border-color: var(--border-card);
+}
+
+:root:not([data-theme="dark"]) .topic-item.accessible:hover {
+  background: var(--bg-sidebar-item-active);
+  border-color: var(--border-hover);
+}
+
+:root:not([data-theme="dark"]) .status-badge.available {
+  background: var(--color-primary);
+  color: white;
+}
+
+:root:not([data-theme="dark"]) .status-badge.locked {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-secondary);
+}
+
+:root:not([data-theme="dark"]) .progress-bar {
+  background: rgba(0, 0, 0, 0.1);
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .locked-topic-screen {
