@@ -45,12 +45,12 @@ const buildSummary = (responses: StudentResponse[]): SummaryStats => {
   };
 };
 
-const getEncouragement = (accuracy: number): string => {
-  if (accuracy >= 80) return 'Excellent momentum!';
-  if (accuracy >= 60) return 'Great progress—keep refining those skills!';
-  if (accuracy > 0) return 'Practice makes perfect—keep going!';
-  return 'Ready to start your Python journey?';
-};
+// const getEncouragement = (accuracy: number): string => {
+//   if (accuracy >= 80) return 'Excellent momentum!';
+//   if (accuracy >= 60) return 'Great progress—keep refining those skills!';
+//   if (accuracy > 0) return 'Practice makes perfect—keep going!';
+//   return 'Ready to start your Python journey?';
+// };
 
 const formatLastAccessed = (isoDate: string | null): string | null => {
   if (!isoDate) return null;
@@ -68,6 +68,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<TopicProgress[]>([]);
   const [responses, setResponses] = useState<StudentResponse[]>([]);
+  const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -127,6 +128,15 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
 
   const lastTopic = sortedTopics[0];
 
+  const responsesByTopic = useMemo(() => {
+    const grouped: Record<string, StudentResponse[]> = {};
+    for (const r of responses) {
+      if (!grouped[r.topic]) grouped[r.topic] = [];
+      grouped[r.topic].push(r);
+    }
+    return grouped;
+  }, [responses]);
+
   const handleContinueLearning = () => {
     if (!lastTopic) return;
     window.location.hash = lastTopic.topic;
@@ -141,7 +151,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
             {summary.totalQuestions > 0
               ? `You've answered ${summary.totalQuestions} questions with ${summary.accuracy.toFixed(
                   0,
-                )}% accuracy. ${getEncouragement(summary.accuracy)}`
+                )}% accuracy.`
               : 'Ready to start your Python journey? Pick a topic from the sidebar to begin!'}
           </p>
         </div>
@@ -177,7 +187,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
               <div className="stat-card__content">
                 <p className="stat-card__label">Accuracy</p>
                 <p className="stat-card__value">{summary.accuracy.toFixed(0)}%</p>
-                <p className="stat-card__detail">{getEncouragement(summary.accuracy)}</p>
+                {/* <p className="stat-card__detail">{(summary.accuracy)}</p> */}
               </div>
             </div>
 
@@ -215,14 +225,23 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                   const isComplete = topic.completion_percentage >= 100;
                   const totalSubtopics =
                     topic.total_subtopics != null ? topic.total_subtopics : '?';
+                  const isExpanded = expandedTopic === topic.topic;
+                  const topicResponses = responsesByTopic[topic.topic] ?? [];
+                  const topicSummary = buildSummary(topicResponses);
                   return (
                     <div
                       key={topic.topic}
-                      className={`topic-card ${isComplete ? 'topic-card--complete' : ''}`}
+                      className={`topic-card ${isComplete ? 'topic-card--complete' : ''} ${isComplete && isExpanded ? 'topic-card--expanded' : ''}`}
+                      onClick={() => isComplete && setExpandedTopic(isExpanded ? null : topic.topic)}
+                      style={isComplete ? { cursor: 'pointer' } : undefined}
                     >
                       <div className="topic-card__header">
                         <h3>{topic.topic_name}</h3>
-                        {isComplete && <span className="topic-card__badge">✓ Complete</span>}
+                        {isComplete && (
+                          <span className="topic-card__badge">
+                            {isExpanded ? '▲' : '✓'} Complete
+                          </span>
+                        )}
                       </div>
 
                         <div className="topic-card__stats">
@@ -234,6 +253,12 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                             <span className="topic-stat__value">{topic.questions_answered}</span>
                             <span className="topic-stat__label">questions</span>
                           </div>
+                          {isComplete && topicResponses.length > 0 && (
+                            <div className="topic-stat">
+                              <span className="topic-stat__value">{topicSummary.accuracy.toFixed(0)}%</span>
+                              <span className="topic-stat__label">accuracy</span>
+                            </div>
+                          )}
                         </div>
 
                       <div className="topic-card__progress">
@@ -279,6 +304,44 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                           Last practiced: {formatLastAccessed(topic.last_accessed)}
                         </div>
                       )}
+
+                      {isExpanded && (
+                        <div className="topic-card__review">
+                          {topicResponses.length === 0 ? (
+                            <p className="completed-topic-item__empty">
+                              No recorded answers for this topic.
+                            </p>
+                          ) : (
+                            topicResponses.map((r) => (
+                              <div
+                                key={r.id}
+                                className={`response-row response-row--${r.status}`}
+                              >
+                                <div
+                                  className={`activity-item__indicator activity-item__indicator--${r.status}`}
+                                >
+                                  {r.status === 'correct' ? '✓' : r.status === 'incorrect' ? '✗' : '—'}
+                                </div>
+                                <div className="response-row__content">
+                                  <div className="response-row__subtopic">{r.subtopic_type}</div>
+                                  <pre className="response-row__code">{r.question_code}</pre>
+                                  <div className="response-row__answers">
+                                    {r.status !== 'correct' && (
+                                      <span className="response-row__student">
+                                        Your answer: {r.student_answer ?? 'skipped'}
+                                      </span>
+                                    )}
+                                    <span className="response-row__correct">
+                                      Correct: {r.correct_answer}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="response-row__time">{r.time_spent}s</div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -286,45 +349,6 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
             )}
           </section>
 
-          <section className="student-dashboard__section">
-            <h2>Recent Activity</h2>
-            {responses.length === 0 ? (
-              <div className="empty-state">
-                <p>No activity yet</p>
-                <p className="empty-state__hint">Your most recent answers will appear here.</p>
-              </div>
-            ) : (
-              <div className="activity-timeline">
-                {responses.slice(0, 10).map((response) => (
-                  <div key={response.id} className="activity-item">
-                    <div
-                      className={`activity-item__indicator activity-item__indicator--${response.status}`}
-                    >
-                      {response.status === 'correct'
-                        ? 'C'
-                        : response.status === 'incorrect'
-                          ? 'I'
-                          : 'S'}
-                    </div>
-                    <div className="activity-item__content">
-                      <div className="activity-item__header">
-                        <span className="activity-item__topic">{response.topic}</span>
-                        <span className="activity-item__time">
-                          {new Date(response.attempted_at).toLocaleTimeString(undefined, {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      </div>
-                      <div className="activity-item__details">
-                        {response.subtopic_type} · {response.time_spent ?? 0}s
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
         </>
       )}
     </div>
