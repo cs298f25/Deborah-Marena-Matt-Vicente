@@ -122,12 +122,12 @@ class StringsMastery_6 extends StringsMasteryBase {
   genCode(): string {
     const char = randChoice([
       ...ASCII_LETTERS,
-      ...this.values.word.toLowerCase(),
-      ...this.values.word.toLowerCase(),
-      ...this.values.word.toLowerCase(),
-      ...this.values.word.toUpperCase(),
-      ...this.values.word.toUpperCase(),
-      ...this.values.word.toUpperCase(),
+      ...this.vals[2].toLowerCase(),
+      ...this.vals[2].toUpperCase(),
+      ...this.vals[2].toLowerCase(),
+      ...this.vals[2].toUpperCase(),
+      ...this.vals[2].toLowerCase(),
+      ...this.vals[2].toUpperCase(),
     ]);
     return `${toPyStr(char)} ${randChoice(["not ", ""])}in ${this.vars[2]}`;
   }
@@ -155,18 +155,13 @@ class StringsMastery_10 extends StringsMasteryBase {
   genCode(): string { return `${toPyStr(randChoices([...DIGITS, ...this.vars[0], ...this.vars[1]], 3).join(""))}.isdigit()`; }
 }
 class StringsMastery_11 extends StringsMasteryBase {
-  genCode(): string { return `${this.vars[2]}.${randChoice(['find', 'index'])}(${toPyStr(randChoice([...this.values.word]))})`; }
+  genCode(): string { return `${this.vars[2]}.${randChoice(['find', 'index'])}(${toPyStr(randChoice([...this.vals[2]]))})`; }
 }
 class StringsMastery_12 extends StringsMasteryBase {
   genCode(): string {
     const char = randChoice([
-      ...ASCII_LETTERS,
-      ...this.values.word.toLowerCase(),
-      ...this.values.word.toLowerCase(),
-      ...this.values.word.toLowerCase(),
-      ...this.values.word.toUpperCase(),
-      ...this.values.word.toUpperCase(),
-      ...this.values.word.toUpperCase(),
+      ...this.vals[2].toLowerCase(),
+      ...this.vals[2].toUpperCase(),
     ]);
     return `${this.vars[2]}.replace(${toPyStr(char)}, ${toPyStr(randChoice(ASCII_LETTERS))})`;
   }
@@ -188,7 +183,6 @@ class StringsMastery_Long_1 extends Subtopic {
     const code = dedent`
         ${var1} = ${toPyStr(string_val)}
         ${var2} = ${var1}.find(${toPyStr(sep)})
-        // TODO: Test this, escaped quotes...
         print(f${opp_quote}{${var2}}\\n\\${quote}{${sliced}}\\${quote}${opp_quote})
     `;
     return createQuestion(code, [], {usesOutput: true});
