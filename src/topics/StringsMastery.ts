@@ -1,6 +1,6 @@
 import { Question, Subtopic, Topic, createQuestion } from '../topics';
-import { randChoice, randChoices, randBool, randVars, randInt, randInts, randIntNum, shuffle, capitalize, ASCII_LETTERS, DIGITS } from '../util';
-import { toPyStr, toPyAtom } from '../python';
+import { randChoice, randChoices, randBool, randVars, randInt, randInts, randIntNum, shuffle, capitalize, ASCII_LETTERS, ASCII_LOWER, DIGITS } from '../util';
+import { toPyStr } from '../python';
 import dedent from 'dedent-js';
 import { BASIC_ARITHMETIC } from './BasicArithmetic';
 import { BASIC_VARIABLES } from './BasicVariables';
@@ -15,19 +15,21 @@ import { STRING_METHODS } from './StringMethods';
 import { SPLITTING_AND_JOINING } from './SplittingAndJoining';
 import { F_STRINGS } from './FStrings';
 
-const STRINGS = ["Hello World", "Moravian Univ", "The String", "Intro CS"]
-const ANIMALS = ["cat", "dog", "vee", "fox", "bat", "cow", "pig", "rat", "eel", "ant", "hen"]
+const STRINGS = [
+  "Hello World", "Moravian Univ", "The String", "Intro CS", "Time Flies",
+  "Think Big", "Keep Calm", "Fizzle Out", "Hocus Pocus", "Just Do It",
+]
+const ANIMALS = ["cat", "dog", "bee", "fox", "bat", "cow", "pig", "rat", "eel", "ant", "hen"]
 
-function createVarsVals(): [string[], [bigint, bigint, string], {start: bigint, stop: bigint, word: string, char: string}] {
+function createVarsVals(): [string[], [bigint, bigint, string], {start: bigint, stop: bigint, word: string}] {
   const [var1, var2, var3] = randVars(3);
   const str = randChoice(STRINGS);
-  const word = randChoice(ANIMALS);
-  const char = randChoice(ASCII_LETTERS);
+  const word = capitalize(randChoice(ANIMALS));
   const int1 = randInt(1n, 3n);
   let [start, stop] = randInts(2n, BigInt(str.length - 2), 2);
   if (start > stop) { [start, stop] = [stop, start]; }
   const int2 = stop;
-  return [[var1, var2, var3], [int1, int2, str], {start, stop, word, char}];
+  return [[var1, var2, var3], [int1, int2, str], {start, stop, word}];
 }
 function createCode(vars: string[], vals: [bigint, bigint, string]): string {
   const [var1, var2, var3] = vars;
@@ -42,7 +44,7 @@ function createCode(vars: string[], vals: [bigint, bigint, string]): string {
 class StringsMastery extends Topic {
   vars: string[];
   vals: [bigint, bigint, string];
-  values: {start: bigint, stop: bigint, word: string, char: string};
+  values: {start: bigint, stop: bigint, word: string};
   constructor() {
     const [vars, vals, values] = createVarsVals();
     const code = createCode(vars, vals);
@@ -57,6 +59,8 @@ class StringsMastery extends Topic {
       new StringsMastery_8(vars, vals, values, code),
       new StringsMastery_9(vars, vals, values, code),
       new StringsMastery_10(vars, vals, values, code),
+      new StringsMastery_11(vars, vals, values, code),
+      new StringsMastery_12(vars, vals, values, code),
       new StringsMastery_Long_1(),
       new StringsMastery_Long_2(),
     ], [
@@ -75,7 +79,6 @@ class StringsMastery extends Topic {
     this.values.start = values.start;
     this.values.stop = values.stop;
     this.values.word = values.word;
-    this.values.char = values.char;
     this.sharedCode = createCode(vars, vals);
     for (const subtopic of this.subtopics) {
       if (subtopic instanceof StringsMasteryBase) {
@@ -88,9 +91,9 @@ class StringsMastery extends Topic {
 abstract class StringsMasteryBase extends Subtopic {
   vars: string[];
   vals: [bigint, bigint, string];
-  values: {start: bigint, stop: bigint, word: string, char: string};
+  values: {start: bigint, stop: bigint, word: string};
   sharedCode: string;
-  constructor(vars: string[], vals: [bigint, bigint, string], values: {start: bigint, stop: bigint, word: string, char: string}, sharedCode: string) {
+  constructor(vars: string[], vals: [bigint, bigint, string], values: {start: bigint, stop: bigint, word: string}, sharedCode: string) {
     super(); this.vars = vars; this.vals = vals; this.values = values; this.sharedCode = sharedCode;
   }
   generateQuestion(): Question {
@@ -116,38 +119,79 @@ class StringsMastery_5 extends StringsMasteryBase {
   genCode(): string { return `${this.vars[2]}[:${this.values.start}] + ${this.vars[2]}[${this.vars[1]}:]`; }
 }
 class StringsMastery_6 extends StringsMasteryBase {
-  genCode(): string { return `${toPyStr(this.values.char)} ${randChoice(["not ", ""])}in ${this.vars[2]}`; }
+  genCode(): string {
+    const char = randChoice([
+      ...ASCII_LETTERS,
+      ...this.values.word.toLowerCase(),
+      ...this.values.word.toLowerCase(),
+      ...this.values.word.toLowerCase(),
+      ...this.values.word.toUpperCase(),
+      ...this.values.word.toUpperCase(),
+      ...this.values.word.toUpperCase(),
+    ]);
+    return `${toPyStr(char)} ${randChoice(["not ", ""])}in ${this.vars[2]}`;
+  }
 }
 class StringsMastery_7 extends StringsMasteryBase {
-  genCode(): string { return `${toPyStr(randChoice(ASCII_LETTERS))} < ${toPyStr(randChoice(ASCII_LETTERS))}`; }
+  genCode(): string {
+    let ch1 = randChoice(ASCII_LOWER);
+    let ch2 = randChoice(ASCII_LOWER);
+    while (ch1 === ch2) {
+      ch2 = randChoice(ASCII_LOWER);
+    }
+    ch1 = randBool(0.25) ? this.vars[2] : toPyStr(ch1);
+    return `${ch1} ${randChoice(["<", ">", "<=", ">="])} ${toPyStr(ch2)}`;
+  }
 }
 class StringsMastery_8 extends StringsMasteryBase {
-  genCode(): string { return randBool() ? `${this.vars[2]}.lower()` : `${this.vars[2]}.upper()`; }
+  genCode(): string {
+    const var_f = randBool() ? `{${this.vars[2]}}` : this.vars[2]
+    const add_f = randBool() ? `{${this.vars[0]}}+{${this.vars[1]}}` : `{${this.vars[0]}+${this.vars[1]}}`
+    return `f"${var_f} ${add_f}"`;
+  }
 }
 class StringsMastery_9 extends StringsMasteryBase {
-  genCode(): string { return randBool() ? `f'${this.values.word} {${this.vars[0]}+${this.vars[1]}}'` : `f'${this.values.word} {${this.vars[0]}}+{${this.vars[1]}}'`; }
+  genCode(): string { return randBool() ? `${this.vars[2]}.lower()` : `${this.vars[2]}.upper()`; }
 }
 class StringsMastery_10 extends StringsMasteryBase {
-  genCode(): string { return `${toPyStr(randChoices([...DIGITS, "a"], 3).join(""))}.isdigit()`; }
+  genCode(): string { return `${toPyStr(randChoices([...DIGITS, ...this.vars[0], ...this.vars[1]], 3).join(""))}.isdigit()`; }
+}
+class StringsMastery_11 extends StringsMasteryBase {
+  genCode(): string { return `${this.vars[2]}.${randChoice(['find', 'index'])}(${toPyStr(this.values.word)})`; }
+}
+class StringsMastery_12 extends StringsMasteryBase {
+  genCode(): string {
+    const char = randChoice([
+      ...ASCII_LETTERS,
+      ...this.values.word.toLowerCase(),
+      ...this.values.word.toLowerCase(),
+      ...this.values.word.toLowerCase(),
+      ...this.values.word.toUpperCase(),
+      ...this.values.word.toUpperCase(),
+      ...this.values.word.toUpperCase(),
+    ]);
+    return `${this.vars[2]}.replace(${toPyStr(char)}, ${toPyStr(randChoice(ASCII_LETTERS))})`;
+  }
 }
 
 class StringsMastery_Long_1 extends Subtopic {
   generateQuestion(): Question {
-    const sep = randChoice([...";:-_."]);
-    const [var1, var2, var3] = randVars(3);
-    const list_val = randChoices(ANIMALS, randIntNum(2, 3));
+    const sep = randChoice([...":-_.=+/"]);
+    const [var1, var2] = randVars(2);
+    const animals = randChoices(ANIMALS, randIntNum(2, 4));
+    const string_val = animals.join(sep);
     const sliced = randChoice([
         `${var1}[:${var2}]`,
         `${var1}[:${var2}+1]`,
         `${var1}[${var2}:]`,
         `${var1}[${var2}+1:]`,
     ]);
-    const quote = randChoice(['"', "'"]);
+    const [quote, opp_quote] = randChoices(['"', "'"], 2);
     const code = dedent`
-        ${var3} = ${toPyAtom(list_val)}
-        ${var1} = ${toPyStr(sep)}.join(${var3})
+        ${var1} = ${toPyStr(string_val)}
         ${var2} = ${var1}.find(${toPyStr(sep)})
-        print(f\"{len(${var1})} {${var2}} \\${quote}{${sliced}}\\${quote}\")
+        // TODO: Test this, escaped quotes...
+        print(f${opp_quote}{${var2}}\\n\\${quote}{${sliced}}\\${quote}${opp_quote})
     `;
     return createQuestion(code, [], {usesOutput: true});
   }
@@ -155,25 +199,20 @@ class StringsMastery_Long_1 extends Subtopic {
 
 class StringsMastery_Long_2 extends Subtopic {
   generateQuestion(): Question {
-    const sep1 = randChoice([",", ":", ";"]);
-    const sep2 = randChoice([",", ":", ";"]);
-    const [var1, var2, var3] = randVars(3);
+    const [sep1, sep2] = randChoices([...":-_.=+/"], 2);
+    const [var1, var2, var3, var4] = randVars(4);
     const animals = ANIMALS.map(animal => capitalize(animal));
     shuffle(animals);
-    const count1 = randIntNum(2, 4);
+    const count1 = randIntNum(2, 3);
     const count2 = randIntNum(2, 3);
     const val1 = animals.slice(0, count1).join(sep1);
     const val2 = animals.slice(count1, count1+count2).join(sep2);
-    const [var_x, sep_x, var_y] = randBool() ? [var1, sep1, var2] : [var2, sep2, var1];
-    const ch1 = randChoice([...val1.replaceAll(",", "").replaceAll(":", "").replaceAll(";", "")]);
-    const ch2 = randChoice(ASCII_LETTERS);
     const code = dedent`
         ${var1} = ${toPyStr(val1)}.${randChoice(['upper', 'lower'])}()
         ${var2} = ${toPyStr(val2)}.${randChoice(['upper', 'lower'])}()
-        ${var_x} += ${toPyStr(randChoice([sep1, sep2]))} + ${var_y}
-        ${var_y} = ${var_x}.replace(${toPyStr(ch1)}, ${toPyStr(ch2)})
-        ${var3} = ${var_y}.split(${toPyStr(sep_x)})
-        print(len(${var3}), ${var_y})
+        ${var3} = ${var1} + ${toPyStr(randChoice([sep1, sep2]))} + ${var2}
+        ${var4} = ${var3}.split(${toPyStr(randChoice([sep1, sep2]))})
+        print(len(${var4}), ${var3})
     `;
     return createQuestion(code, [], {usesOutput: true});
   }

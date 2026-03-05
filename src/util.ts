@@ -77,10 +77,10 @@ export function isClose(a: number, b: number, epsilon: number = 1e-6): boolean {
 }
 
 // Generate a random boolean
-export function randBool(): boolean { return Math.random() > 0.5; }
+export function randBool(probability: number = 0.5): boolean { return Math.random() < probability; }
 
 // Generate n random booleans
-export function randBools(n: number): boolean[] { return Array.from({length: n}, randBool); }
+export function randBools(n: number, probability: number = 0.5): boolean[] { return Array.from({length: n}, () => randBool(probability)); }
 
 // Choose a random element from an array
 export function randChoice<T>(array: T[]): T {
