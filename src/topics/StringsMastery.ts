@@ -136,11 +136,9 @@ class StringsMastery_7 extends StringsMasteryBase {
   genCode(): string {
     let ch1 = randChoice(ASCII_LOWER);
     let ch2 = randChoice(ASCII_LOWER);
-    while (ch1 === ch2) {
-      ch2 = randChoice(ASCII_LOWER);
-    }
-    ch1 = randBool(0.25) ? this.vars[2] : toPyStr(ch1);
-    return `${ch1} ${randChoice(["<", ">", "<=", ">="])} ${toPyStr(ch2)}`;
+    while (ch1 === ch2) { ch2 = randChoice(ASCII_LOWER); }
+    if (randBool()) { ch1 = ch2 + ch1; }
+    return `${toPyStr(ch1)} ${randChoice(["<", ">", "<=", ">="])} ${toPyStr(ch2)}`;
   }
 }
 class StringsMastery_8 extends StringsMasteryBase {
@@ -157,7 +155,7 @@ class StringsMastery_10 extends StringsMasteryBase {
   genCode(): string { return `${toPyStr(randChoices([...DIGITS, ...this.vars[0], ...this.vars[1]], 3).join(""))}.isdigit()`; }
 }
 class StringsMastery_11 extends StringsMasteryBase {
-  genCode(): string { return `${this.vars[2]}.${randChoice(['find', 'index'])}(${toPyStr(this.values.word)})`; }
+  genCode(): string { return `${this.vars[2]}.${randChoice(['find', 'index'])}(${toPyStr(randChoice([...this.values.word]))})`; }
 }
 class StringsMastery_12 extends StringsMasteryBase {
   genCode(): string {
