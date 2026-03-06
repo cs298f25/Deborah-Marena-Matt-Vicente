@@ -1,12 +1,12 @@
 import { Question, Subtopic, Topic, createQuestion } from '../topics';
-import { randChoice, randChoices, randVars, randInt, randInts, randIntNum } from '../util';
+import { randChoice, randChoices, randVars, randInt, randInts, randIntNum, randBool, shuffle } from '../util';
 import { toPyStr, toPyAtom } from '../python';
 import dedent from 'dedent-js';
 import { MEMBERSHIP_OPERATORS } from './MembershipOperator';
 import { LIST_BASICS } from './ListBasics';
 import { LIST_SLICING } from './ListSlicing';
 
-const ANIMALS = ["cat", "dog", "bird", "fish", "snake", "turtle", "duck", "cow", "pig"]
+const ANIMALS = ["cat", "dog", "bird", "fish", "frog", "snake", "turtle", "duck", "cow", "pig"]
 
 function createVarsVals(): [string[], [bigint, string, string[]], {start: bigint, stop: bigint}] {
   const [var1, var2, var3] = randVars(3);
@@ -85,39 +85,39 @@ abstract class ListMasteryBase extends Subtopic {
 }
 
 class ListMastery_1 extends ListMasteryBase {
-  genCode(): string { return `len(${this.vars[2]})`; }
-}
-class ListMastery_2 extends ListMasteryBase {
   genCode(): string { return `${this.vars[2]}[1]`; }
 }
-class ListMastery_3 extends ListMasteryBase {
+class ListMastery_2 extends ListMasteryBase {
   genCode(): string { return `${this.vars[2]}[-1]`; }
 }
-class ListMastery_4 extends ListMasteryBase {
+class ListMastery_3 extends ListMasteryBase {
   genCode(): string { return `${this.vars[2]}[${this.vars[0]}]`; }
 }
-class ListMastery_5 extends ListMasteryBase {
-  genCode(): string {
-    return randChoice([
-      `len(${this.vars[2]}[1] + ${this.vars[1]})`,
-      `len(${this.vars[1]} + ${this.vars[2]}[1])`,
-    ]);
-  }
-}
-class ListMastery_6 extends ListMasteryBase {
+class ListMastery_4 extends ListMasteryBase {
   genCode(): string { return `${this.vars[2]}[${this.values.start}:${this.values.stop}]`; }
 }
-class ListMastery_7 extends ListMasteryBase {
+class ListMastery_5 extends ListMasteryBase {
   genCode(): string { return `${this.vars[2]}[:${this.values.start}] + ${this.vars[2]}[${this.values.stop}:]`; }
+}
+class ListMastery_6 extends ListMasteryBase {
+  genCode(): string { return `len(${this.vars[2]})`; }
+}
+class ListMastery_7 extends ListMasteryBase {
+  genCode(): string { return `len(${this.vars[2]}[${randInt(1n, BigInt(this.vals[2].length-1))}]))`; }
 }
 class ListMastery_8 extends ListMasteryBase {
   genCode(): string { return `${this.vars[1]} ${randChoice(["not ", ""])}in ${this.vars[2]}`; }
 }
 class ListMastery_9 extends ListMasteryBase {
-  genCode(): string { return `${toPyAtom(this.vals[2][0][0])} ${randChoice(["not ", ""])}in ${this.vars[2]}`; }
+  genCode(): string {
+    const ch = randChoice([...this.vals[2].slice(0, 2).join("")]);
+    return `${toPyAtom(ch)} ${randChoice(["not ", ""])}in ${this.vars[2]}`; }
 }
 class ListMastery_10 extends ListMasteryBase {
-  genCode(): string { return `${toPyAtom(this.vals[2][1][0])} in ${this.vars[2]}[1]`; }
+  genCode(): string {
+    const ch = randChoice([...this.vals[2].slice(1, 3).join("")]);
+    return `${toPyAtom(ch)} in ${this.vars[2]}[${randInt(1n, 3n)}]`;
+  }
 }
 
 class ListMastery_Long extends Subtopic {
@@ -125,14 +125,16 @@ class ListMastery_Long extends Subtopic {
     const [lst_var, item_var, none_var] = randVars(3);
     const alphabet = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
     const list_len = randIntNum(3, 5);
-    const lst = randChoices(alphabet, list_len);
-    let ch = randChoice(alphabet);
-    while (lst.includes(ch)) { ch = randChoice(alphabet); }
-    const [index1, index2] = randInts(1n, BigInt(list_len-1), 2);
+    const lst = randChoices(alphabet, list_len+2);
+    const ch1 = lst[0];
+    const ch2 = lst[1];
+    lst.splice(0, 2);
+    const [index1, index2, index3] = randInts(0n, BigInt(list_len+1), 3);
     const lst_repr = lst.map(item => toPyStr(item));
-    lst_repr.splice(randIntNum(0, list_len-1), 0, item_var);
+    lst_repr.splice(Number(index3), 0, item_var);
     const option = randIntNum(0, 2);
-    let code = `${item_var} = ${toPyStr(ch)}\n`
+
+    let code = `${item_var} = ${toPyStr(ch1)}\n`
     code += `${lst_var} = [${lst_repr.join(", ")}]\n`
     if (option <= 1) {
       code += `${item_var} = ${lst_var}[${index1}]\n`
@@ -140,8 +142,13 @@ class ListMastery_Long extends Subtopic {
     if (option >= 1) {
       code += `${lst_var}[${index2}] = ${item_var}\n`
     }
-    code += `${none_var} = ${lst_var}.append(${toPyStr(ch)})\n`
-    code += `print(${none_var}, ${lst_var})`
+    if (randBool(0.67)) {
+      code += `${none_var} = ${lst_var}.append(${toPyStr(ch2)})\n`
+    } else {
+      code += `${none_var} = ${lst_var}.sort()\n`
+    }
+    const vars = shuffle([item_var, none_var, lst_var]);
+    code += `print(${vars[0]}, ${vars[1]}, ${vars[2]})`
     return createQuestion(code, [], {usesOutput: true});
   }
 }
