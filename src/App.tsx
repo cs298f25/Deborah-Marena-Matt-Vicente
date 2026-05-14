@@ -9,10 +9,12 @@ import TopicCompletionScreen from './components/TopicCompletionScreen.tsx';
 import LockedTopicScreen from './components/LockedTopicScreen.tsx';
 import { getPythonLoadPromise } from './python.ts';
 import StudentsPage from './pages/StudentsPage.tsx';
+import ClassSelector from './components/ClassSelector.tsx';
 import './App.css';
 import LoginScreen from './components/LoginScreen';
 import { authService } from './services/auth';
 import type { User } from './services/auth';
+import type { Class } from './services/classes';
 import { responsesService } from './services/responses';
 import { progressService } from './services/progress';
 import InstructorDashboard from './pages/InstructorDashboard';
@@ -68,6 +70,7 @@ function App() {
   const [theme, setThemeState] = useState<'light' | 'dark'>(getThemePreference());
   const isInstructor = currentUser?.role === 'instructor';
   const [instructorPractice, setInstructorPractice] = useState(false);
+  const [currentClass, setCurrentClass] = useState<Class | null>(null);
   const clearUrlHash = () => {
     const { pathname, search } = window.location;
     window.history.replaceState(null, '', `${pathname}${search}`);
@@ -480,6 +483,15 @@ function App() {
               </button>
             )}
             {isInstructor && (
+              <ClassSelector
+                currentClassId={currentClass?.id ?? null}
+                onClassChange={(cls) => {
+                  setCurrentClass(cls);
+                  setCurrentScreen('dashboard');
+                }}
+              />
+            )}
+            {isInstructor && (
               <button
                 onClick={() => {
                   setInstructorPractice(true);
@@ -531,7 +543,7 @@ function App() {
       <main className="App-main">
         {currentScreen === 'dashboard' ? (
           currentUser.role === 'instructor' ? (
-            <InstructorDashboard />
+            <InstructorDashboard classId={currentClass?.id ?? null} />
           ) : (
             <StudentDashboard user={currentUser} />
           )
@@ -551,7 +563,7 @@ function App() {
           </div>
         ) : currentScreen === 'students' ? (
           <div className="content-area" ref={contentAreaRef}>
-            <StudentsPage />
+            <StudentsPage classId={currentClass?.id ?? null} />
           </div>
         ) : (
           <>

@@ -10,7 +10,6 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-
 class User(db.Model):
     __tablename__ = "users"
 
@@ -33,6 +32,28 @@ class User(db.Model):
             "email": self.email,
             "name": self.name,
             "role": self.role,
+            "created_at": self.created_at.isoformat(),
+        }
+
+class Class(db.Model):
+    __tablename__ = "classes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    class_name = db.Column(db.String(100), nullable=False)
+    instructor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    instructor = db.relationship("User", backref="classes")
+
+    def __repr__(self) -> str:
+        return f"<Class {self.class_name}>"
+    
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "class_name": self.class_name,
+            "instructor_id": self.instructor_id,
             "created_at": self.created_at.isoformat(),
         }
 
@@ -67,6 +88,7 @@ class StudentResponse(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    class_id = db.Column(db.Integer, db.ForeignKey("classes.id"), nullable=False)
     topic = db.Column(db.String(100), db.ForeignKey("topics.id"), nullable=False)
     subtopic_type = db.Column(
         db.String(100), nullable=False
@@ -86,6 +108,7 @@ class StudentResponse(db.Model):
         return {
             "id": self.id,
             "user_id": self.user_id,
+            "class_id": self.class_id,
             "topic": self.topic,
             "subtopic_type": self.subtopic_type,
             "question_code": self.question_code,
@@ -103,6 +126,7 @@ class StudentProgress(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    class_id = db.Column(db.Integer, db.ForeignKey("classes.id"), nullable=False)
     topic = db.Column(db.String(100), db.ForeignKey("topics.id"), nullable=False)
     subtopics_completed = db.Column(db.Integer, default=0)
     total_subtopics = db.Column(db.Integer)
@@ -110,7 +134,7 @@ class StudentProgress(db.Model):
     last_accessed = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Ensure one progress record per user per topic
-    __table_args__ = (db.UniqueConstraint("user_id", "topic", name="_user_topic_uc"),)
+    __table_args__ = (db.UniqueConstraint("user_id", "topic", "class_id", name="_user_topic_uc"),)
 
     def __repr__(self) -> str:
         return f"<Progress user={self.user_id} topic={self.topic}>"
@@ -119,6 +143,7 @@ class StudentProgress(db.Model):
         return {
             "id": self.id,
             "user_id": self.user_id,
+            "class_id": self.class_id,
             "topic": self.topic,
             "subtopics_completed": self.subtopics_completed,
             "total_subtopics": self.total_subtopics,
@@ -194,20 +219,21 @@ class RosterStudent(db.Model):
     __tablename__ = "roster_students"
 
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(255), unique=True, nullable=False)
+    email = db.Column(db.String(255), nullable=False)
     first_name = db.Column(db.String(120), nullable=False)
     last_name = db.Column(db.String(120), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
-    
+
     # CRUD features
     deleted_at = db.Column(db.DateTime, nullable=True, default=None)  # Soft delete
     notes = db.Column(db.Text, nullable=True, default=None)  # Optional notes
-    
-    # Future class support (exists but not exposed in UI yet)
-    class_name = db.Column(db.String(100), nullable=True, default=None)  # NULL = unassigned
+
+    class_id = db.Column(db.Integer, db.ForeignKey("classes.id"), nullable=True)
+
+    __table_args__ = (db.UniqueConstraint("email", "class_id", name="_roster_email_class_uc"),)
     
     # Upload tracking
     last_updated_via = db.Column(db.String(20), nullable=True)  # 'csv_add', 'csv_drop', 'inline', 'manual'
@@ -226,7 +252,7 @@ class RosterStudent(db.Model):
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
             "notes": self.notes,
-            "class_name": self.class_name,
+            "class_id": self.class_id,
             "last_updated_via": self.last_updated_via,
             "last_upload_id": self.last_upload_id,
         }

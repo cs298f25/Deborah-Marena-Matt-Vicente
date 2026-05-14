@@ -9,7 +9,7 @@ export type Student = {
   updated_at: string;
   deleted_at: string | null;
   notes: string | null;
-  class_name: string | null;
+  class_id: number | null;
   last_updated_via: string | null;
   last_upload_id: number | null;
 };
@@ -69,7 +69,7 @@ export const studentsService = {
     pageSize = 20,
     search = '',
     includeDeleted = false,
-    className?: string,
+    classId?: number,
     sortBy = 'created_at',
     sortOrder: 'asc' | 'desc' = 'desc',
   ): Promise<Paginated<Student>> {
@@ -81,7 +81,7 @@ export const studentsService = {
     });
     if (search.trim()) params.set('search', search.trim());
     if (includeDeleted) params.set('include_deleted', 'true');
-    if (className) params.set('class_name', className);
+    if (classId) params.set('class_id', String(classId));
 
     const res = await fetch(`${API_BASE}/students?${params.toString()}`);
     if (!res.ok) throw new Error(`Failed to fetch students (${res.status})`);
@@ -99,7 +99,7 @@ export const studentsService = {
     first_name: string;
     last_name: string;
     notes?: string;
-    class_name?: string;
+    class_id?: number | null;
   }): Promise<Student> {
     const res = await fetch(`${API_BASE}/students`, {
       method: 'POST',
@@ -121,7 +121,7 @@ export const studentsService = {
       first_name: string;
       last_name: string;
       notes: string | null;
-      class_name: string | null;
+      class_id: number | null;
     }>,
   ): Promise<Student> {
     const res = await fetch(`${API_BASE}/students/${id}`, {
@@ -166,9 +166,10 @@ export const studentsService = {
     return res.json();
   },
 
-  async addFromCsv(file: File): Promise<UploadResponse> {
+  async addFromCsv(file: File, classId?: number | null): Promise<UploadResponse> {
     const formData = new FormData();
     formData.set('file', file);
+    if (classId) formData.set('class_id', String(classId));
     const res = await fetch(`${API_BASE}/students/add`, {
       method: 'POST',
       body: formData,

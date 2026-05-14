@@ -27,8 +27,9 @@ def get_topic_report(topic_id: str):
 
 @reports_bp.get("/class/overview")
 def get_class_overview():
+    class_id = request.args.get("class_id", type=int)
     service = current_app.config.get("REPORT_SERVICE", ReportService)
-    overview = service.get_class_overview()
+    overview = service.get_class_overview(class_id=class_id)
     return jsonify(overview), 200
 
 

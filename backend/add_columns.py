@@ -1,6 +1,6 @@
 """
-Simple script to add new columns to existing roster_students table.
-Run this once to update your database schema.
+Migration script to update the database schema.
+Run this once after pulling changes that add new columns or tables.
 """
 
 from backend.app import create_app
@@ -9,41 +9,98 @@ from backend.models import db
 app = create_app()
 
 with app.app_context():
-    # Check if columns exist and add them if they don't
     inspector = db.inspect(db.engine)
-    columns = [col['name'] for col in inspector.get_columns('roster_students')]
-    
-    print(f"Existing columns: {columns}")
-    
-    # Add missing columns
+
+    # ── roster_students ──────────────────────────────────────────────────────
+    roster_cols = [col['name'] for col in inspector.get_columns('roster_students')]
+    print(f"roster_students columns: {roster_cols}")
+
     with db.engine.connect() as conn:
-        if 'deleted_at' not in columns:
-            print("Adding deleted_at column...")
+        if 'deleted_at' not in roster_cols:
+            print("Adding deleted_at...")
             conn.execute(db.text("ALTER TABLE roster_students ADD COLUMN deleted_at DATETIME"))
             conn.commit()
-        
-        if 'notes' not in columns:
-            print("Adding notes column...")
+
+        if 'notes' not in roster_cols:
+            print("Adding notes...")
             conn.execute(db.text("ALTER TABLE roster_students ADD COLUMN notes TEXT"))
             conn.commit()
-        
-        if 'class_name' not in columns:
-            print("Adding class_name column...")
-            conn.execute(db.text("ALTER TABLE roster_students ADD COLUMN class_name VARCHAR(100)"))
-            conn.commit()
-        
-        if 'last_updated_via' not in columns:
-            print("Adding last_updated_via column...")
+
+        if 'last_updated_via' not in roster_cols:
+            print("Adding last_updated_via...")
             conn.execute(db.text("ALTER TABLE roster_students ADD COLUMN last_updated_via VARCHAR(20)"))
             conn.commit()
-        
-        if 'last_upload_id' not in columns:
-            print("Adding last_upload_id column...")
+
+        if 'last_upload_id' not in roster_cols:
+            print("Adding last_upload_id...")
             conn.execute(db.text("ALTER TABLE roster_students ADD COLUMN last_upload_id INTEGER"))
             conn.commit()
-    
-    # Create upload_history table if it doesn't exist
-    db.create_all()
-    
-    print("Database schema updated successfully!")
 
+        if 'class_id' not in roster_cols:
+            print("Adding class_id to roster_students...")
+            conn.execute(db.text("ALTER TABLE roster_students ADD COLUMN class_id INTEGER REFERENCES classes(id)"))
+            conn.commit()
+
+    # ── student_responses ────────────────────────────────────────────────────
+    response_cols = [col['name'] for col in inspector.get_columns('student_responses')]
+    print(f"student_responses columns: {response_cols}")
+
+    with db.engine.connect() as conn:
+        if 'class_id' not in response_cols:
+            print("Adding class_id to student_responses...")
+            conn.execute(db.text("ALTER TABLE student_responses ADD COLUMN class_id INTEGER REFERENCES classes(id)"))
+            conn.commit()
+
+    # ── student_progress ─────────────────────────────────────────────────────
+    progress_cols = [col['name'] for col in inspector.get_columns('student_progress')]
+    print(f"student_progress columns: {progress_cols}")
+
+    with db.engine.connect() as conn:
+        if 'class_id' not in progress_cols:
+            print("Adding class_id to student_progress...")
+            conn.execute(db.text("ALTER TABLE student_progress ADD COLUMN class_id INTEGER REFERENCES classes(id)"))
+            conn.commit()
+
+    # ── fix roster_students unique constraint ────────────────────────────────
+    # Old schema had UNIQUE(email); new schema needs UNIQUE(email, class_id)
+    # SQLite can't drop constraints, so recreate the table if needed.
+    with db.engine.connect() as conn:
+        ddl = conn.execute(
+            db.text("SELECT sql FROM sqlite_master WHERE name='roster_students'")
+        ).scalar() or ""
+
+        if "UNIQUE (email)" in ddl and "UNIQUE (email, class_id)" not in ddl:
+            print("Recreating roster_students to fix unique constraint...")
+            conn.execute(db.text("""
+                CREATE TABLE roster_students_new (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    email VARCHAR(255) NOT NULL,
+                    first_name VARCHAR(120) NOT NULL,
+                    last_name VARCHAR(120) NOT NULL,
+                    created_at DATETIME,
+                    updated_at DATETIME,
+                    deleted_at DATETIME,
+                    notes TEXT,
+                    last_updated_via VARCHAR(20),
+                    last_upload_id INTEGER REFERENCES upload_history(id),
+                    class_id INTEGER REFERENCES classes(id),
+                    UNIQUE (email, class_id)
+                )
+            """))
+            conn.execute(db.text("""
+                INSERT INTO roster_students_new
+                    (id, email, first_name, last_name, created_at, updated_at,
+                     deleted_at, notes, last_updated_via, last_upload_id, class_id)
+                SELECT id, email, first_name, last_name, created_at, updated_at,
+                       deleted_at, notes, last_updated_via, last_upload_id, class_id
+                FROM roster_students
+            """))
+            conn.execute(db.text("DROP TABLE roster_students"))
+            conn.execute(db.text("ALTER TABLE roster_students_new RENAME TO roster_students"))
+            conn.commit()
+            print("roster_students recreated with UNIQUE(email, class_id).")
+
+    # ── create any new tables (classes, upload_history, etc.) ────────────────
+    db.create_all()
+
+    print("Database schema updated successfully!")

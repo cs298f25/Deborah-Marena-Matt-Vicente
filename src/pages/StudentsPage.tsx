@@ -9,7 +9,7 @@ type EditingState = {
   value: string;
 };
 
-export default function StudentsPage() {
+export default function StudentsPage({ classId }: { classId: number | null }) {
   const [students, setStudents] = useState<Student[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -30,7 +30,7 @@ export default function StudentsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await studentsService.list(page, pageSize, search);
+      const data = await studentsService.list(page, pageSize, search, false, classId ?? undefined);
       setStudents(data.items);
       setTotalPages(data.total_pages);
       setTotal(data.total);
@@ -44,7 +44,7 @@ export default function StudentsPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize]);
+  }, [page, pageSize, classId]);
 
   const doSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +58,7 @@ export default function StudentsPage() {
     setUploadSummary(null);
     setErrors([]);
     try {
-      const res = await studentsService.addFromCsv(file);
+      const res = await studentsService.addFromCsv(file, classId);
       setUploadSummary(res.summary);
       setErrors(res.errors);
       await load();

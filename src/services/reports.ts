@@ -114,8 +114,9 @@ export const reportsService = {
     return response.data;
   },
 
-  async getClassOverview(): Promise<ClassOverview> {
-    const response = await api.get('reports/class/overview');
+  async getClassOverview(classId?: number | null): Promise<ClassOverview> {
+    const params = classId ? `?class_id=${classId}` : '';
+    const response = await api.get(`reports/class/overview${params}`);
     return response.data;
   },
 

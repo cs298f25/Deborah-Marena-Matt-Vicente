@@ -27,7 +27,7 @@ const createDownload = (data: unknown, filename: string) => {
   URL.revokeObjectURL(link.href);
 };
 
-export default function InstructorDashboard() {
+export default function InstructorDashboard({ classId }: { classId: number | null }) {
   const [classOverview, setClassOverview] = useState<ClassOverview | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,11 +44,11 @@ export default function InstructorDashboard() {
 
   useEffect(() => {
     loadClassOverview();
-  }, []);
+  }, [classId]);
 
   const loadClassOverview = async () => {
     try {
-      const data = await reportsService.getClassOverview();
+      const data = await reportsService.getClassOverview(classId);
       setClassOverview(data);
     } catch (error) {
       console.error('Failed to load class overview:', error);

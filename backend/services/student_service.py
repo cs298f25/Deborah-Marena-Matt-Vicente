@@ -29,7 +29,7 @@ def list_students(
     page_size: int,
     search: str | None = None,
     include_deleted: bool = False,
-    class_name: str | None = None,
+    class_id: int | None = None,
     sort_by: str = "created_at",
     sort_order: str = "desc",
 ) -> dict:
@@ -41,9 +41,9 @@ def list_students(
     if not include_deleted:
         query = query.filter(RosterStudent.deleted_at.is_(None))
 
-    # Filter by class name
-    if class_name:
-        query = query.filter(RosterStudent.class_name == class_name)
+    # Filter by class
+    if class_id:
+        query = query.filter(RosterStudent.class_id == class_id)
 
     # Search filter
     if search:
@@ -62,7 +62,7 @@ def list_students(
         "first_name": RosterStudent.first_name,
         "last_name": RosterStudent.last_name,
         "created_at": RosterStudent.created_at,
-        "class_name": RosterStudent.class_name,
+        "class_id": RosterStudent.class_id,
     }.get(sort_by, RosterStudent.created_at)
 
     if sort_order.lower() == "asc":
@@ -134,7 +134,7 @@ def bulk_upsert(
 
 
 def add_students_from_csv(
-    rows: Iterable[Tuple[int, RosterStudentRow]], filename: str, user_id: int | None = None
+    rows: Iterable[Tuple[int, RosterStudentRow]], filename: str, user_id: int | None = None, class_id: int | None = None
 ) -> tuple[dict, list[dict], UploadHistory]:
     """
     Add students from CSV to the roster bank.
@@ -161,13 +161,12 @@ def add_students_from_csv(
             skipped += 1
             continue
 
-        # Check if student exists (not soft-deleted)
+        # Check if student exists in this class (not soft-deleted)
         existing = RosterStudent.query.filter_by(
-            email=email, deleted_at=None
+            email=email, class_id=class_id, deleted_at=None
         ).first()
-        
+
         if existing:
-            # Already exists, skip
             skipped += 1
             changes.append({
                 "type": "skipped",
@@ -178,13 +177,12 @@ def add_students_from_csv(
             })
             continue
 
-        # Check if soft-deleted (can restore)
-        deleted = RosterStudent.query.filter_by(email=email).filter(
-            RosterStudent.deleted_at.isnot(None)
-        ).first()
-        
+        # Check if soft-deleted in this class (can restore)
+        deleted = RosterStudent.query.filter_by(
+            email=email, class_id=class_id
+        ).filter(RosterStudent.deleted_at.isnot(None)).first()
+
         if deleted:
-            # Restore and update
             deleted.deleted_at = None
             deleted.first_name = first_name
             deleted.last_name = last_name
@@ -203,6 +201,7 @@ def add_students_from_csv(
                 email=email,
                 first_name=first_name,
                 last_name=last_name,
+                class_id=class_id,
                 last_updated_via="csv_add",
             )
             db.session.add(student)

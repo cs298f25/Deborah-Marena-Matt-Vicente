@@ -14,10 +14,11 @@ except ModuleNotFoundError:  # pragma: no cover
         return None
 
 from backend.config import get_config
-from backend.models import db, RosterStudent, Topic, UploadHistory  # Import models so SQLAlchemy discovers them
+from backend.models import db, Class, RosterStudent, Topic, UploadHistory  # Import models so SQLAlchemy discovers them
 from backend.topic_definitions import TOPIC_DEFINITIONS
 from backend.routes import (
     auth_bp,
+    classes_bp,
     progress_bp,
     reports_bp,
     responses_bp,
@@ -71,6 +72,7 @@ def _register_routes(app: Flask) -> None:
     """Register core routes for health checks and diagnostics."""
 
     app.register_blueprint(auth_bp)
+    app.register_blueprint(classes_bp)
     app.register_blueprint(progress_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(responses_bp)

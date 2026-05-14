@@ -23,7 +23,7 @@ def list_students():
     page_size = request.args.get("page_size", default=20, type=int)
     search = request.args.get("search", default="", type=str)
     include_deleted = request.args.get("include_deleted", default=False, type=bool)
-    class_name = request.args.get("class_name", default=None, type=str)
+    class_id = request.args.get("class_id", default=None, type=int)
     sort_by = request.args.get("sort_by", default="created_at", type=str)
     sort_order = request.args.get("sort_order", default="desc", type=str)
 
@@ -32,7 +32,7 @@ def list_students():
         page_size=page_size,
         search=search,
         include_deleted=include_deleted,
-        class_name=class_name,
+        class_id=class_id,
         sort_by=sort_by,
         sort_order=sort_order,
     )
@@ -68,10 +68,12 @@ def add_students():
 
     try:
         user_id = session.get("user_id")
+        class_id = request.form.get("class_id", type=int)
         summary, errors, upload_history = student_service.add_students_from_csv(
             enumerate(rows, start=2),  # header is line 1
             filename=file.filename,
             user_id=user_id,
+            class_id=class_id,
         )
     except SQLAlchemyError as e:
         db.session.rollback()
@@ -163,23 +165,23 @@ def create_student():
     first_name = (data.get("first_name") or "").strip()
     last_name = (data.get("last_name") or "").strip()
     notes = data.get("notes", "").strip() or None
-    class_name = data.get("class_name", "").strip() or None
-    
+    class_id = data.get("class_id") or None
+
     if not email or not first_name or not last_name:
         return jsonify({"error": "Email, first_name, and last_name are required"}), 400
-    
-    # Check if already exists (not soft-deleted)
-    existing = RosterStudent.query.filter_by(email=email, deleted_at=None).first()
+
+    # Check if already exists in the same class (not soft-deleted)
+    existing = RosterStudent.query.filter_by(email=email, class_id=class_id, deleted_at=None).first()
     if existing:
-        return jsonify({"error": "Student with this email already exists"}), 409
-    
+        return jsonify({"error": "Student with this email already exists in this class"}), 409
+
     try:
         student = RosterStudent(
             email=email,
             first_name=first_name,
             last_name=last_name,
             notes=notes,
-            class_name=class_name,
+            class_id=class_id,
             last_updated_via="manual",
         )
         db.session.add(student)
@@ -218,8 +220,8 @@ def update_student(id: int):
         student.last_name = data["last_name"].strip()
     if "notes" in data:
         student.notes = data["notes"].strip() or None
-    if "class_name" in data:
-        student.class_name = data["class_name"].strip() or None
+    if "class_id" in data:
+        student.class_id = data["class_id"] or None
     
     student.last_updated_via = "inline"
     

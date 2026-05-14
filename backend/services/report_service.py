@@ -426,7 +426,13 @@ class ReportService:
         }
 
     @staticmethod
-    def get_class_overview() -> Dict:
+    def get_class_overview(class_id: Optional[int] = None) -> Dict:
+        roster_filter = [User.role == "student", RosterStudent.deleted_at.is_(None)]
+        entry_filter = [RosterStudent.deleted_at.is_(None)]
+        if class_id is not None:
+            roster_filter.append(RosterStudent.class_id == class_id)
+            entry_filter.append(RosterStudent.class_id == class_id)
+
         rostered_students_subquery = (
             db.select(User.id)
             .select_from(User)
@@ -434,7 +440,7 @@ class ReportService:
                 RosterStudent,
                 func.lower(RosterStudent.email) == func.lower(User.email),
             )
-            .filter(User.role == "student", RosterStudent.deleted_at.is_(None))
+            .filter(*roster_filter)
             .subquery()
         )
 
@@ -454,7 +460,7 @@ class ReportService:
                     func.lower(User.email) == func.lower(RosterStudent.email),
                     isouter=True,
                 )
-                .filter(RosterStudent.deleted_at.is_(None))
+                .filter(*entry_filter)
                 .order_by(RosterStudent.last_name, RosterStudent.first_name)
             )
             .mappings()
