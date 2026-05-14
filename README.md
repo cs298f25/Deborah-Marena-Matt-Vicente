@@ -7,6 +7,7 @@ BytePath is a full-stack learning assistant that tracks student roster data, top
 - Marena Abboud
 - Matthew Krauss
 - Vicente Rivera
+- Jeffrey Bush
 
 ## Tech Stack
 - Frontend: React + TypeScript (Vite)
@@ -21,12 +22,6 @@ BytePath is a full-stack learning assistant that tracks student roster data, top
 
 ## System Diagram
 ![System diagram showing users hitting the React/TypeScript frontend, which calls the Flask API backed by SQLite](docs/system-diagram.svg)
-
-Text fallback:
-```
-<img width="777" height="435" alt="Screenshot 2025-12-05 at 11 57 12 AM" src="https://github.com/user-attachments/assets/541edba9-2ca4-4a3c-8284-8d2aca48f9e2" />
-
-```
 
 ## Prerequisites
 - Python 3.10+ with `venv`
@@ -99,21 +94,3 @@ Base URL: `http://<host>:5000`
 ## Testing and Quality Checks
 - Backend unit tests: `pytest backend/tests`
 - Frontend lint: `npm run lint`
-
-## Deployment (EC2)
-```bash
-ssh -i your-key.pem ec2-user@YOUR_EC2_IP
-cd ~ && git clone https://github.com/cs298f25/Deborah-Marena-Matt-Vicente.git
-cd Deborah-Marena-Matt-Vicente && sudo bash deploy/deploy.sh
-```
-The script installs dependencies, configures systemd services, and auto-detects the instance IP.
-
-- Frontend: `http://YOUR_EC2_IP:5173`
-- Backend: `http://YOUR_EC2_IP:5000`
-- Ensure the security group allows ports 5000 and 5173.
-- Service management:  
-  `sudo systemctl status bytepath-backend bytepath-frontend`  
-  `sudo systemctl restart bytepath-backend bytepath-frontend`  
-  `sudo journalctl -u bytepath-backend -f`
-
-For deployment details or troubleshooting, see `deploy/TEAM_DEPLOYMENT.md`.
